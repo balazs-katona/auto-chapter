@@ -58,3 +58,21 @@ def test_every_question_goes_through_ask() -> None:
 
     assert reads  # the pattern still finds them
     assert [r for r in reads if not any(a in r for a in allowed)] == []
+
+
+def _code_lines() -> list[str]:
+    return [
+        line.strip()
+        for line in INSTALL_SH.read_text(encoding="utf-8").splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    ]
+
+
+def test_users_get_no_dev_tools() -> None:
+    """pytest, ruff and mypy are for development only: the installer syncs
+    the app's own dependencies and does not run the test suite."""
+    syncs = [line for line in _code_lines() if "uv sync" in line]
+
+    assert syncs  # the dependency step is still there
+    assert [line for line in syncs if "dev" in line] == []
+    assert [line for line in _code_lines() if "pytest" in line] == []

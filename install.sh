@@ -106,8 +106,10 @@ fi
 step "Installing Python dependencies..."
 # uv's output is long and noisy, so it goes to a file; it is shown only if
 # the install fails (set -e would otherwise stop the script with no reason).
+# Only the app's own dependencies: the test and lint tools (the "dev" extra)
+# are for development, `uv sync --extra dev` adds them.
 uv_log=$(mktemp)
-if uv sync --extra dev >"$uv_log" 2>&1; then
+if uv sync >"$uv_log" 2>&1; then
     ok "Dependencies installed"
     rm -f "$uv_log"
 else
@@ -131,7 +133,9 @@ if problem:
 " 2>&1); then
     ok "ffmpeg has the filters auto-chapter needs"
 else
-    err "$filter_problem"
+    # The problem is one sentence; if the app's code itself failed to load,
+    # Python's last line (the error) instead of the whole traceback.
+    err "$(printf '%s\n' "$filter_problem" | tail -n 1)"
     echo "Please fix this and run this script again."
     exit 1
 fi
@@ -553,11 +557,22 @@ PYEOF
 fi
 
 # --- 4. Quick verification ---
+# Every module of the app is loaded once, so a broken or incomplete install
+# shows up here and not at the first menu choice. (Not the test suite: users
+# get no test tools, see step 2.)
 step "Verifying installation..."
-if uv run pytest -q --no-header 2>&1 | tail -1 | grep -q "passed"; then
+verify_log=$(mktemp)
+if uv run python -c "import importlib, pkgutil, auto_chapter as p
+for m in pkgutil.walk_packages(p.__path__, 'auto_chapter.'): importlib.import_module(m.name)" \
+    >"$verify_log" 2>&1; then
     ok "All checks passed"
+    rm -f "$verify_log"
 else
-    warn "Some checks failed - installation might still work"
+    # Only Python's last line (the error itself), not the traceback.
+    err "The app could not be loaded: $(tail -n 1 "$verify_log")"
+    echo -e "  ${DIM}Full output: $verify_log${NC}"
+    echo "Fix the cause shown above, then run this script again."
+    exit 1
 fi
 
 # --- 5. Launcher + PATH installation ---
