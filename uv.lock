@@ -90,7 +90,7 @@ wheels = [
 
 [[package]]
 name = "auto-chapter"
-version = "0.2.38"
+version = "0.2.39"
 source = { editable = "." }
 dependencies = [
     { name = "plexapi" },
