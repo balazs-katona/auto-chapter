@@ -9,7 +9,8 @@ generates chapter markers by analyzing the video for scene transitions
 (fade-to-black moments + scene changes), and writes them into the MKV files.
 
 After processing, Plex Analyze is triggered so the new chapters appear in
-all clients with thumbnails.
+all clients. Chapter thumbnails appear too if "Generate chapter thumbnails"
+is turned on in your Plex server's settings.
 
 ## Requirements
 
@@ -57,8 +58,10 @@ The installer will ask you for:
 
 1. **Plex server address** -- e.g. `192.168.1.100:32400`
 2. **Plex authentication token** -- see below how to find it
-3. **Folder mapping** -- one Plex-side path and one local path per movie
-   folder (see below)
+3. **Where Plex runs** -- on this computer, or on another machine such as a
+   NAS. On another machine it then goes through Plex's movie folders one by
+   one: use or skip each, and type where it is mounted on this computer
+   (see "Why path mapping?" below)
 
 You can skip folder mapping entirely and add folders later from
 Settings inside the app -- the installer won't force you to configure
@@ -71,7 +74,8 @@ Plex and auto-chapter may see the same files at different paths.
 **Example 1 -- Plex runs on the same machine:**
 - Plex path: `/home/user/Movies/`
 - Local path: `/home/user/Movies/`
-- Same path; the installer offers to auto-map these for you.
+- Same path: answer "On this machine" and the installer maps every folder
+  for you, without asking.
 
 **Example 2 -- Plex runs on a NAS, you mount it via SMB:**
 - Plex (on NAS) sees: `/share/Multimedia/Movies/`
@@ -87,11 +91,11 @@ have no mapping.
 
 #### How to find your Plex token
 
-1. Open the Plex web app
-2. Play any movie
-3. Click the three dots on the movie's info screen -> 'Get Info'
-4. At the bottom of the popup, click 'View XML'
-5. In the URL of the XML page, find the value after `X-Plex-Token=`
+1. Open the Plex web app and go to any movie's info page
+2. Click the three dots on the movie, then 'Get Info'
+3. At the bottom of the popup, click 'View XML'
+4. In the browser address bar, go to the very end of the URL: copy the
+   value after `X-Plex-Token=` (about 20 letters and digits)
 
 Official guide:
 https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/
@@ -139,8 +143,11 @@ Main menu
 3. When asked how many to process, you can start small (type a number) to
    see the result on a couple of movies before committing to the rest --
    Enter alone processes all of them.
-4. Confirm when prompted. Progress is shown per movie; `Ctrl+C` once
-   finishes the current movie then stops, twice stops immediately.
+4. Writing starts right after that choice -- there is no further question.
+   Progress is shown per movie; `Ctrl+C` once finishes the current movie
+   then stops, twice stops immediately. Press `s` to switch the computer off
+   when the batch is done (`s` again cancels; a 30-second countdown that
+   `Ctrl+C` stops comes first).
 
 ### Later, when new movies arrive
 
@@ -167,13 +174,12 @@ chapter-count threshold, Plex URL/token) can also be changed from
    scan cleans it up automatically.
 3. The new file contains identical video, audio, and subtitle streams
    (bit-for-bit). Only the container structure is rebuilt.
-4. Hard links are preserved (a file shared between e.g. Radarr and Plex stays
-   shared after processing).
 
 ## Safety Features
 
-- **Confirmation required before any write** -- how many movies to process,
-  or an explicit preview for a single movie, depending on the flow
+- **You decide what gets written** -- Generate and Update process exactly
+  the movies you chose (and how many); Find by title shows the chapters and
+  asks before writing
 - **Active stream check**: a movie currently being watched is skipped
 - **Disk space check**: requires file size + 5 GB free before starting
 - **Atomic write**: temp file -> replace, interruption-safe
@@ -213,10 +219,11 @@ movie during remux. Free up space and retry.
 **"The movie is currently being streamed"**
 Someone is watching this movie via Plex. Wait for them to stop, then retry.
 
-**Plex is slow to respond right after being idle**
-This is normal -- Plex sometimes needs a moment to warm up metadata after
-being idle. auto-chapter retries automatically a couple of times before
-reporting an error.
+**"No answer from Plex yet; retrying..."**
+Usually Plex just needs a moment after being idle. auto-chapter tries
+three times before it reports an error. If it keeps happening, check that
+the Plex server is running and its address is right (Settings → Plex
+connection).
 
 ## Updating to a new version
 
@@ -235,11 +242,6 @@ cd auto-chapter-vX.Y.Z
 rebuilds the Python environment and the `auto-chapter` command. Until you run
 it, the `auto-chapter` command does not work (it points into the folder you
 just replaced).
-
-Coming from version 0.2.28 or older (settings still in the app folder)? Then
-unpack the new version *over* the old folder this one time, without deleting
-it, and run `./install.sh`: it moves `config.yml` and `.env` to
-`~/.config/auto-chapter/` (copy, check, then remove the old ones).
 
 ## Reconfiguring
 

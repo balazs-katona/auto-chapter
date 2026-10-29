@@ -5,8 +5,9 @@
 Automatic chapter marker generation for MKV movies on a Plex server.
 
 Detects scene transitions using FFmpeg (blackdetect + scdet) and writes
-chapter markers into MKV files via mkvmerge -- single-pass write + remux
-for full TV client compatibility (Samsung Tizen, LG WebOS, and others).
+chapter markers into the MKV files via mkvmerge. The whole file is rewritten
+in one pass (not just its chapter list edited in place), so the Plex apps on
+TVs show the chapters too.
 
 ## Quick Start
 
@@ -24,10 +25,28 @@ See **INSTALL.md** for the full installation guide and menu walkthrough.
 
 ## Requirements
 
-- Python 3.13+ (managed by uv)
+- Linux with systemd (install commands for Arch and Debian/Ubuntu are in
+  INSTALL.md)
+- [uv](https://docs.astral.sh/uv/) -- it also provides Python 3.13+ if your
+  system has none
 - ffmpeg, ffprobe (FFmpeg 4.4 or newer: the detection needs the `blackdetect` and `scdet` filters)
 - mkvmerge, mkvextract (from mkvtoolnix)
 - A Plex Media Server with an auth token
+- The movie files reachable from this computer: on its own disk, or a NAS
+  share mounted here
+
+## Your files
+
+auto-chapter **rewrites your MKV files** to add the chapters. Video, audio and
+subtitles are copied unchanged (no re-encoding); only the file around them is
+rebuilt. The original is replaced only after the new file is complete and
+checked, so an interruption never leaves a half-written movie. It does not
+touch a movie that is being watched, and needs free space for one extra copy
+of the movie plus 5 GB while it works.
+
+Still, it writes into your movie collection: **keep a backup of anything you
+can't replace**, and try it on a few movies first. Details: "What Happens to
+My Files" in INSTALL.md.
 
 ## What it does
 
@@ -55,28 +74,34 @@ Main menu
   the End Credits marker, and regenerates just those with the credits
   chapter added.
 - **Find a movie by title** lets you (re)process one specific movie by name,
-  including one that already has Auto Chapters. If a movie matches but can't
-  be processed (for example it probably already has a useful chapter list from another
-  source), you are told why.
-- **Settings** covers folder mappings (add/change/remove/enable/disable), minimum
-  movie length, the chapter-count threshold that decides what's "already
-  done", and your Plex connection.
+  including one that already has Auto Chapters. You see the chapters first
+  and decide whether to write them. If a movie matches but can't be
+  processed (for example it probably already has a useful chapter list from
+  another source), you are told why.
+- **Settings** covers folder mappings (add/change/remove/enable/disable),
+  minimum movie length, the chapter threshold (from how many chapters on a
+  movie is assumed to have a useful chapter list already), and your Plex
+  connection.
+
+While movies are being processed, `Ctrl+C` once finishes the current movie
+and then stops, twice stops at once. Press `s` to switch the computer off
+when the work is done (`s` again cancels).
 
 ## Features
 
 - Interactive menu, no command-line flags to remember
 - Standard-compliant Matroska chapters (RFC 9559)
 - Atomic write (temp file + `os.replace()`) -- the original file is never
-  touched until the new one is fully written and verified; safe to
+  touched until the new one is fully written and checked; safe to
   interrupt at any point
 - Active stream protection (won't modify a file currently being watched)
 - Live progress bar during detection and during the mkvmerge remux
 - Plex Analyze auto-triggered after writing
-- Confirmation required before any write -- batch size, single-movie
-  preview, or an explicit list pick, depending on how you got there
+- You decide what gets written: Generate and Update process exactly the
+  movies you chose; Find by title shows the chapters and asks first
 - Friendly error messages -- network issues, missing tools, disk space,
   permissions, and so on are translated into a short, specific sentence,
-  never a raw stack trace
+  never a raw stack trace (the details go to the log file)
 - Resilient to a temporarily unreachable Plex server or network share --
   keeps running, retries automatically where it can, and always leaves you
   a way to fix it (never gets stuck with no way out)
@@ -86,11 +111,13 @@ Main menu
   crashing
 - Keeps the computer from going to sleep because it was idle while it works
   (systemd; skipped where it is not available)
+- Optional power-off when a batch is done (`s` key)
 
 ## Development
 
 ```bash
+uv sync --extra dev            # adds the test and lint tools (pytest, ruff, mypy)
 uv run pytest                  # run tests
-uv run ruff check src/         # lint
-uv run mypy src/                # type check
+uv run ruff check src tests    # lint
+uv run mypy src                # type check
 ```
