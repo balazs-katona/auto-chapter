@@ -6,8 +6,8 @@ Automatic chapter marker generation for MKV movies on a Plex server.
 
 Detects scene transitions using FFmpeg (blackdetect + scdet) and writes
 chapter markers into the MKV files via mkvmerge. The whole file is rewritten
-in one pass (not just its chapter list edited in place), so the Plex apps on
-TVs show the chapters too.
+in one pass, not just its chapter list edited in place: that is the most
+reliable way to make the new files work well on any device.
 
 ## Quick Start
 
