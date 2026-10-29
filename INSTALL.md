@@ -174,10 +174,10 @@ chapter-count threshold, Plex URL/token) can also be changed from
    scan cleans it up automatically.
 3. The new file contains identical video, audio, and subtitle streams
    (bit-for-bit). Only the container structure is rebuilt.
-4. A hard link is split (the new file replaces the old one at the Plex
-   path). The other copy, for example the one a torrent client seeds, stays
-   as it was, so seeding goes on; until it is deleted the movie takes twice
-   the space.
+4. A hard link (one file under two names, for example in a download folder
+   and in the Plex folder) is split: the new file replaces the old one at
+   the Plex path, the other copy stays as it was. Until that other copy is
+   deleted, the movie takes twice the space.
 
 ## Safety Features
 
