@@ -342,7 +342,7 @@ PYEOF
                     case "$fix" in
                         1) plex_token=""; break ;;
                         2) plex_url=""; plex_token=""; break ;;
-                        3) exit 1 ;;
+                        3) warn "Installation stopped -- nothing was saved. Run ./install.sh again when you are ready."; exit 1 ;;
                         *) echo "Please type 1, 2 or 3." ;;
                     esac
                 done
@@ -360,7 +360,7 @@ PYEOF
                     case "$fix" in
                         1) plex_url=""; break ;;
                         2) plex_url=""; plex_token=""; break ;;
-                        3) exit 1 ;;
+                        3) warn "Installation stopped -- nothing was saved. Run ./install.sh again when you are ready."; exit 1 ;;
                         *) echo "Please type 1, 2 or 3." ;;
                     esac
                 done

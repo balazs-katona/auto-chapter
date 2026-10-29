@@ -76,3 +76,12 @@ def test_users_get_no_dev_tools() -> None:
     assert syncs  # the dependency step is still there
     assert [line for line in syncs if "dev" in line] == []
     assert [line for line in _code_lines() if "pytest" in line] == []
+
+
+def test_quit_installer_says_that_nothing_was_saved() -> None:
+    """"3) Quit installer" used to end without a word."""
+    quits = [line for line in _code_lines() if line.startswith("3)")]
+
+    assert len(quits) == 2  # after a failed connection and after a bad token
+    for line in quits:
+        assert "Installation stopped -- nothing was saved." in line, line
