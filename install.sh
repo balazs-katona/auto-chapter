@@ -133,9 +133,9 @@ if problem:
 " 2>&1); then
     ok "ffmpeg has the filters auto-chapter needs"
 else
-    # The problem is one sentence; if the app's code itself failed to load,
-    # Python's last line (the error) instead of the whole traceback.
-    err "$(printf '%s\n' "$filter_problem" | tail -n 1)"
+    # Usually one sentence; if the app's code itself failed to load, Python's
+    # whole error, which is needed to find the cause.
+    err "$filter_problem"
     echo "Please fix this and run this script again."
     exit 1
 fi
@@ -568,8 +568,9 @@ for m in pkgutil.walk_packages(p.__path__, 'auto_chapter.'): importlib.import_mo
     ok "All checks passed"
     rm -f "$verify_log"
 else
-    # Only Python's last line (the error itself), not the traceback.
-    err "The app could not be loaded: $(tail -n 1 "$verify_log")"
+    # Python's own lines are needed to find the cause: never cut them short.
+    err "The app could not be loaded. Last lines of the error:"
+    tail -n 15 "$verify_log" | sed 's/^/  /'
     echo -e "  ${DIM}Full output: $verify_log${NC}"
     echo "Fix the cause shown above, then run this script again."
     exit 1
