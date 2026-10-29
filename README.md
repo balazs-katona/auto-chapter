@@ -44,6 +44,11 @@ checked, so an interruption never leaves a half-written movie. It does not
 touch a movie that is being watched, and needs free space for one extra copy
 of the movie plus 5 GB while it works.
 
+If a movie is a hard link (for example Radarr and a torrent client sharing
+one file), the link is split: the Plex copy gets the chapters, the other
+copy stays as it was, so seeding goes on. Until that other copy is deleted,
+the movie takes twice the space.
+
 Still, it writes into your movie collection: **keep a backup of anything you
 can't replace**, and try it on a few movies first. Details: "What Happens to
 My Files" in INSTALL.md.
