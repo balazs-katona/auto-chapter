@@ -1,0 +1,45 @@
+# auto-chapter configuration
+#
+# This file is created by install.sh automatically.
+# You usually don't need to edit it by hand.
+
+plex:
+  # URL of your Plex Media Server (e.g. http://192.168.1.100:32400)
+  url: http://YOUR-PLEX-SERVER:32400
+  # PLEX_TOKEN goes into the .env file (created by install.sh)
+
+# Path mappings: how Plex sees files vs how this machine sees them.
+# If Plex and this machine see the files at the same path, set both fields equal.
+# "plex" must be exactly one of Plex's movie folders (copy it from Settings >
+# Folder mappings); "local" is the local or mounted path on this machine and
+# must start with "/". Prefer Settings over editing this by hand.
+paths:
+  - plex: /path/as/plex/sees/it/
+    local: /path/as/this/machine/sees/it/
+
+detection:
+  min_gap_seconds: 300
+  end_margin_seconds: 900
+  min_duration_seconds: 1800
+  chapter_threshold: 4
+  black_duration: 0.5
+  black_pix_threshold: 0.10
+  black_pic_threshold: 0.98
+  scdet_threshold: 10
+
+processing:
+  # Not currently used -- "how many movies to process" is always asked
+  # interactively (Enter defaults to all candidates). Kept for potential
+  # future use (e.g. a non-interactive/scripted mode).
+  batch_size: 50
+  check_active_streams: true
+
+chapter:
+  language: und
+
+logging:
+  # Minimum severity written to the log file. Nothing here ever appears on
+  # screen -- the terminal only ever shows the app's own short, friendly
+  # messages. Set to INFO for more detail if you're diagnosing an issue.
+  log_level: WARNING
+  file_path: logs/auto-chapter.log
