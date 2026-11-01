@@ -39,7 +39,7 @@ from auto_chapter.logging_setup import get_logger
 from auto_chapter.models import Movie, ProcessingResult
 from auto_chapter.orchestrator import Orchestrator
 from auto_chapter.path_mapping import PathMapper, check_dir_with_timeout
-from auto_chapter.plex_client import SkippedMatch, SkipReason
+from auto_chapter.plex_client import SkippedMatch, SkipReason, _searchable
 from auto_chapter.shutdown import (
     SHUTDOWN_TIP_BATCH,
     SHUTDOWN_TIP_SINGLE,
@@ -179,6 +179,15 @@ def parse_selection(spec: str, max_n: int) -> list[int]:
             if 1 <= n <= max_n:
                 result.add(n)
     return sorted(result)
+
+
+def _by_title(movies: list[Movie]) -> list[Movie]:
+    """Alphabetical by title, accents ignored, the same on every system.
+
+    With str.lower(), "Árvácska", "Ében" and "Őrült nők" came after "Zorro".
+    Not locale-aware on purpose: the order must not depend on the machine.
+    """
+    return sorted(movies, key=lambda mv: _searchable(mv.display))
 
 
 # --- Common workflows ---
@@ -752,8 +761,7 @@ def _generate_auto_chapters_flow(orch: Orchestrator, config: Config) -> None:
 
     _print_ignored_mappings(stats.ignored_mappings)
 
-    # Sort candidates alphabetically by display title for predictable order
-    candidates.sort(key=lambda mv: mv.display.lower())
+    candidates = _by_title(candidates)
 
     # The panel is rebuilt each iteration so it stays accurate as movies
     # are processed (and removed from the candidates list) within this session.
@@ -841,7 +849,7 @@ def _update_end_credits_flow(orch: Orchestrator, config: Config) -> None:
 
     _print_ignored_mappings(stats.ignored_mappings)
 
-    candidates.sort(key=lambda mv: mv.display.lower())
+    candidates = _by_title(candidates)
 
     initial_remaining = len(candidates)
 

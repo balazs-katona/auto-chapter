@@ -1784,3 +1784,14 @@ def test_a_movie_that_cannot_be_read_is_reported_once(
     shown = " ".join(capsys.readouterr().out.split())
     assert "Couldn't read the movie file, nothing was written: File not found." in shown
     assert "Detection failed" not in shown
+
+
+def test_titles_with_accents_sort_with_their_letter() -> None:
+    """str.lower() put "Árvácska", "Ében" and "Őrült nők" after "Zorro"."""
+    titles = ["Zorro", "Árvácska", "Alien", "Őrült nők", "Oscar", "Ében"]
+
+    ordered = menu._by_title([_movie(t, has_credits=True) for t in titles])
+
+    assert [mv.title for mv in ordered] == [
+        "Alien", "Árvácska", "Ében", "Őrült nők", "Oscar", "Zorro"
+    ]
