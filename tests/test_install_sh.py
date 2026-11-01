@@ -6,6 +6,8 @@ import re
 import subprocess
 from pathlib import Path
 
+import pytest
+
 INSTALL_SH = Path(__file__).resolve().parent.parent / "install.sh"
 STOPPED = "No input received -- installation stopped."
 
@@ -85,3 +87,105 @@ def test_quit_installer_says_that_nothing_was_saved() -> None:
     assert len(quits) == 2  # after a failed connection and after a bad token
     for line in quits:
         assert "Installation stopped -- nothing was saved." in line, line
+
+
+def _bash_function(name: str) -> str:
+    text = INSTALL_SH.read_text(encoding="utf-8")
+    found = re.search(rf"^{name}\(\) \{{\n.*?^\}}$", text, re.MULTILINE | re.DOTALL)
+    assert found, f"install.sh has no {name}() function"
+    return found.group(0)
+
+
+# What /etc/os-release says on these systems (the lines that matter).
+OS_RELEASE = {
+    "EndeavourOS": 'ID=endeavouros\nID_LIKE=arch\n',
+    "Arch": "ID=arch\n",
+    "Ubuntu": "ID=ubuntu\nID_LIKE=debian\n",
+    "Linux Mint": 'ID=linuxmint\nID_LIKE="ubuntu debian"\n',
+    "Debian": "ID=debian\n",
+    "Fedora": "ID=fedora\n",
+    "openSUSE Tumbleweed": 'ID="opensuse-tumbleweed"\nID_LIKE="opensuse suse"\n',
+    "Rocky Linux": 'ID="rocky"\nID_LIKE="rhel centos fedora"\n',
+    "Gentoo": "ID=gentoo\n",
+}
+FAMILY = {
+    "EndeavourOS": "arch",
+    "Arch": "arch",
+    "Ubuntu": "debian",
+    "Linux Mint": "debian",
+    "Debian": "debian",
+    "Fedora": "fedora",
+    "openSUSE Tumbleweed": "suse",
+    "Rocky Linux": "",  # RHEL-like: no ffmpeg in its own repositories
+    "Gentoo": "",  # package names not known here
+}
+
+
+@pytest.mark.parametrize("system", list(OS_RELEASE))
+def test_the_installer_knows_which_system_it_is_on(system: str, tmp_path: Path) -> None:
+    os_release = tmp_path / "os-release"
+    os_release.write_text(OS_RELEASE[system], encoding="utf-8")
+    script = f'{_bash_function("distro_family")}\ndistro_family "{os_release}"\n'
+
+    done = subprocess.run(["bash", "-c", script], capture_output=True, text=True, check=False)
+
+    assert done.stdout.strip() == FAMILY[system]
+
+
+def test_no_os_release_means_an_unknown_system(tmp_path: Path) -> None:
+    script = f'{_bash_function("distro_family")}\ndistro_family "{tmp_path / "none"}"\n'
+
+    done = subprocess.run(["bash", "-c", script], capture_output=True, text=True, check=False)
+
+    assert done.returncode == 0
+    assert done.stdout == ""
+
+
+def _commands(family: str, *packages: str, sudo: str = "sudo ", download: str = "curl") -> list[str]:
+    script = (
+        f'{_bash_function("install_commands")}\nSUDO="{sudo}"\nDOWNLOAD="{download}"\n'
+        f'install_commands {family} {" ".join(packages)}\n'
+    )
+    done = subprocess.run(["bash", "-c", script], capture_output=True, text=True, check=False)
+    return done.stdout.splitlines()
+
+
+UV_SCRIPT = "curl -LsSf https://astral.sh/uv/install.sh | sh"
+
+
+@pytest.mark.parametrize(
+    ("family", "expected"),
+    [
+        ("arch", ["sudo pacman -S --needed --noconfirm uv ffmpeg mkvtoolnix-cli"]),
+        (
+            "debian",
+            ["sudo apt-get update", "sudo apt-get install -y ffmpeg mkvtoolnix", UV_SCRIPT],
+        ),
+        ("fedora", ["sudo dnf install -y ffmpeg-free mkvtoolnix", UV_SCRIPT]),
+        ("suse", ["sudo zypper --non-interactive install ffmpeg mkvtoolnix", UV_SCRIPT]),
+    ],
+)
+def test_commands_for_everything_missing(family: str, expected: list[str]) -> None:
+    assert _commands(family, "uv", "ffmpeg", "mkvtoolnix") == expected
+
+
+def test_only_uv_missing_needs_no_package_manager() -> None:
+    assert _commands("debian", "uv") == [UV_SCRIPT]
+
+
+def test_without_curl_or_wget_curl_is_installed_for_uv() -> None:
+    assert _commands("debian", "uv", "ffmpeg", download="") == [
+        "sudo apt-get update",
+        "sudo apt-get install -y ffmpeg curl",
+        UV_SCRIPT,
+    ]
+
+
+def test_with_only_wget_uv_comes_through_wget() -> None:
+    assert _commands("debian", "uv", download="wget") == [
+        "wget -qO- https://astral.sh/uv/install.sh | sh"
+    ]
+
+
+def test_as_root_no_sudo() -> None:
+    assert _commands("arch", "ffmpeg", sudo="") == ["pacman -S --needed --noconfirm ffmpeg"]

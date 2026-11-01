@@ -71,35 +71,150 @@ echo "================================================================"
 echo -e "${NC}"
 echo -e "${DIM}Press Ctrl+C at any time to cancel the installation.${NC}"
 
-# --- 1. Check tools ---
-step "Checking required system tools..."
+# --- 1. Check tools, and offer to install the missing ones ---
 
-missing=()
-
+# Each tool and the package it comes in. The packages are what gets installed.
 check_tool() {
-    local tool=$1
-    local install_hint=$2
+    local tool=$1 pkg=$2
     if command -v "$tool" &>/dev/null; then
         ok "$tool"
     else
         err "$tool is missing"
-        echo -e "  ${DIM}Install: $install_hint${NC}"
         missing+=("$tool")
+        [[ " ${missing_pkgs[*]} " == *" $pkg "* ]] || missing_pkgs+=("$pkg")
     fi
 }
 
-check_tool "uv"         "https://docs.astral.sh/uv/getting-started/installation/  (or: sudo pacman -S uv on Arch)"
-check_tool "ffmpeg"     "sudo pacman -S ffmpeg  (or: sudo apt install ffmpeg)"
-check_tool "ffprobe"    "comes with ffmpeg"
-check_tool "mkvmerge"   "sudo pacman -S mkvtoolnix-cli  (or: sudo apt install mkvtoolnix)"
-check_tool "mkvextract" "comes with mkvtoolnix"
-check_tool "timeout"    "part of GNU coreutils (should already be installed)"
+check_all_tools() {
+    missing=()
+    missing_pkgs=()
+    check_tool uv uv
+    check_tool ffmpeg ffmpeg
+    check_tool ffprobe ffmpeg
+    check_tool mkvmerge mkvtoolnix
+    check_tool mkvextract mkvtoolnix
+    check_tool timeout coreutils
+}
+
+# Which Linux family an os-release file ($1) describes: arch, debian, fedora or
+# suse -- the ones whose package names are known here -- or nothing.
+distro_family() {
+    [ -r "$1" ] || return 0
+    local ids
+    ids=" $(. "$1"; echo "${ID:-} ${ID_LIKE:-}") "
+    case "$ids" in
+        *" rhel "*|*" centos "*) ;;   # no ffmpeg in their own repositories
+        *" arch "*) echo arch ;;
+        *" debian "*|*" ubuntu "*) echo debian ;;
+        *" fedora "*) echo fedora ;;
+        *" suse "*|*" opensuse "*) echo suse ;;
+    esac
+}
+
+# The commands that install packages ($2...: uv, ffmpeg, mkvtoolnix, coreutils)
+# on family $1, one per line. $SUDO is "sudo " ("" for root); $DOWNLOAD is curl
+# or wget (or empty) for uv's own installer, which works on every distribution
+# -- only Arch ships uv itself.
+install_commands() {
+    local family=$1 p uv=false
+    local pkgs=()
+    shift
+    for p in "$@"; do
+        case "$family:$p" in
+            arch:uv) pkgs+=(uv) ;;
+            *:uv) uv=true ;;
+            arch:mkvtoolnix) pkgs+=(mkvtoolnix-cli) ;;
+            fedora:ffmpeg) pkgs+=(ffmpeg-free) ;;
+            *) pkgs+=("$p") ;;
+        esac
+    done
+    if $uv && [ -z "$DOWNLOAD" ]; then
+        pkgs+=(curl)
+    fi
+    if [ ${#pkgs[@]} -gt 0 ]; then
+        case $family in
+            arch) echo "${SUDO}pacman -S --needed --noconfirm ${pkgs[*]}" ;;
+            debian)
+                echo "${SUDO}apt-get update"
+                echo "${SUDO}apt-get install -y ${pkgs[*]}"
+                ;;
+            fedora) echo "${SUDO}dnf install -y ${pkgs[*]}" ;;
+            suse) echo "${SUDO}zypper --non-interactive install ${pkgs[*]}" ;;
+        esac
+    fi
+    if $uv && [ "$DOWNLOAD" = wget ]; then
+        echo "wget -qO- https://astral.sh/uv/install.sh | sh"
+    elif $uv; then
+        echo "curl -LsSf https://astral.sh/uv/install.sh | sh"
+    fi
+}
+
+step "Checking required system tools..."
+check_all_tools
 
 if [ ${#missing[@]} -gt 0 ]; then
+    FAMILY=$(distro_family /etc/os-release)
+    if [ "$(id -u)" = 0 ]; then SUDO=""; else SUDO="sudo "; fi
+    if command -v curl &>/dev/null; then DOWNLOAD=curl
+    elif command -v wget &>/dev/null; then DOWNLOAD=wget
+    else DOWNLOAD=""
+    fi
     echo
-    err "Missing tools: ${missing[*]}"
-    echo "Please install them and run this script again."
-    exit 1
+
+    # A system whose package names are not known here, or no sudo: say what
+    # is needed, with a command wherever one works everywhere.
+    if [ -z "$FAMILY" ] || { [ -n "$SUDO" ] && ! command -v sudo &>/dev/null; }; then
+        err "Missing tools: ${missing[*]}"
+        echo "Install these with your system's package manager, then run ./install.sh again:"
+        for p in "${missing_pkgs[@]}"; do
+            case $p in
+                uv) echo "  uv:          curl -LsSf https://astral.sh/uv/install.sh | sh" ;;
+                ffmpeg) echo "  ffmpeg:      the ffmpeg package, 4.4 or newer (gives ffmpeg and ffprobe)" ;;
+                mkvtoolnix) echo "  mkvtoolnix:  the mkvtoolnix package (gives mkvmerge and mkvextract)" ;;
+                coreutils) echo "  coreutils:   the coreutils package (gives timeout)" ;;
+            esac
+        done
+        exit 1
+    fi
+
+    mapfile -t install_cmds < <(install_commands "$FAMILY" "${missing_pkgs[@]}")
+    echo "auto-chapter can install them for you with:"
+    for c in "${install_cmds[@]}"; do
+        echo -e "  ${BOLD}$c${NC}"
+    done
+    echo
+    while true; do
+        ask "Install them now? (y/n): " install_now
+        case "$install_now" in
+            y|Y|yes|YES) break ;;
+            n|N|no|NO)
+                echo "Nothing was installed. Run the commands above yourself, then run ./install.sh again."
+                exit 1
+                ;;
+            *) echo "Please type 'y' or 'n'." ;;
+        esac
+    done
+    for c in "${install_cmds[@]}"; do
+        echo
+        info "Running: $c"
+        if ! bash -c "set -o pipefail; $c"; then
+            err "This command failed: $c"
+            echo "Fix the cause shown above, then run ./install.sh again."
+            exit 1
+        fi
+    done
+
+    # uv's own installer puts it into ~/.local/bin (or $XDG_BIN_HOME), which
+    # this shell may not have on its PATH yet.
+    export PATH="${XDG_BIN_HOME:-$HOME/.local/bin}:$PATH"
+    step "Checking required system tools again..."
+    check_all_tools
+    if [ ${#missing[@]} -gt 0 ]; then
+        echo
+        err "Still missing: ${missing[*]}"
+        echo "Install them yourself, then run ./install.sh again."
+        exit 1
+    fi
 fi
 
 # --- 2. Python deps ---

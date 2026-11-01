@@ -1,6 +1,6 @@
 # auto-chapter
 
-**v0.2.41**
+**v0.3.0**
 
 Automatic chapter marker generation for MKV movies on a Plex server.
 
@@ -16,7 +16,8 @@ chmod +x install.sh
 ./install.sh
 ```
 
-The installer checks required tools, asks for your Plex URL and token,
+The installer checks required tools and offers to install the missing ones,
+asks for your Plex URL and token,
 walks you through mapping your movie folders, and sets everything up. Zero
 folders mapped is fine too -- add them later from the app's Settings menu.
 When done, type `auto-chapter` from any directory to start.
@@ -25,8 +26,8 @@ See **INSTALL.md** for the full installation guide and menu walkthrough.
 
 ## Requirements
 
-- Linux with systemd (install commands for Arch and Debian/Ubuntu are in
-  INSTALL.md)
+- Linux with systemd. On Debian/Ubuntu, Arch, Fedora and openSUSE (and
+  systems based on them) the installer can install the tools below for you.
 - [uv](https://docs.astral.sh/uv/) -- it also provides Python 3.13+ if your
   system has none
 - ffmpeg, ffprobe (FFmpeg 4.4 or newer: the detection needs the `blackdetect` and `scdet` filters)

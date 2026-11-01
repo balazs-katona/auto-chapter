@@ -14,13 +14,21 @@ is turned on in your Plex server's settings.
 
 ## Requirements
 
-You need these tools installed on your system:
+These tools are needed:
 
 - **uv** (Python package manager)
 - **ffmpeg** and **ffprobe** (video analysis; FFmpeg **4.4 or newer** -- the detection
   needs the `blackdetect` and `scdet` filters, and the installer checks for them)
 - **mkvmerge** and **mkvextract** (from mkvtoolnix)
 - **timeout** (part of GNU coreutils -- already on virtually every Linux system)
+
+**The installer finds what is missing and offers to install it for you** on
+Debian / Ubuntu, Arch, Fedora and openSUSE, and on systems based on them
+(Linux Mint, EndeavourOS, Manjaro, ...). It shows the commands, asks once,
+and asks for your password (`sudo`) if you say yes. On other systems it
+tells you what to install.
+
+To install them yourself instead:
 
 Arch Linux:
 ```
@@ -29,7 +37,7 @@ sudo pacman -S uv ffmpeg mkvtoolnix-cli
 
 Debian / Ubuntu:
 ```
-sudo apt install ffmpeg mkvtoolnix
+sudo apt install ffmpeg mkvtoolnix curl
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
@@ -56,6 +64,8 @@ chmod +x install.sh
 
 The installer will ask you for:
 
+0. **Only if a tool is missing:** "Install them now? (y/n)" -- see
+   Requirements above
 1. **Plex server address** -- e.g. `192.168.1.100:32400`
 2. **Plex authentication token** -- see below how to find it
 3. **Where Plex runs** -- on this computer, or on another machine such as a
