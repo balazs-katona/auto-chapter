@@ -20,6 +20,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 
 from auto_chapter.logging_setup import get_logger
+from auto_chapter.tool_env import tool_env
 
 log = get_logger(__name__)
 
@@ -57,6 +58,7 @@ def _start() -> "subprocess.Popen[bytes] | None":
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             start_new_session=True,
+            env=tool_env(),
         )
     except OSError as e:
         log.info("sleep_inhibit_unavailable", reason=str(e))

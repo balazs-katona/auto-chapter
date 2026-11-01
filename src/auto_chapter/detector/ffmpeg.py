@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from auto_chapter.batch_control import register_subprocess
+from auto_chapter.tool_env import tool_env
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,6 +40,7 @@ def ffmpeg_filter_problem() -> str | None:
             encoding="utf-8",
             errors="replace",
             timeout=15,
+            env=tool_env(),
         )
     except (OSError, subprocess.TimeoutExpired) as e:
         return f"Could not ask ffmpeg for its filter list ({type(e).__name__}: {e})."
@@ -80,7 +82,9 @@ def run_ffmpeg(args: list[str], timeout: float | None = None) -> FFmpegResult:
         stderr=subprocess.PIPE,
         text=True,
         encoding="utf-8",
+        errors="replace",
         start_new_session=True,
+        env=tool_env(),
     )
     register_subprocess(proc)
     try:
@@ -112,7 +116,15 @@ def get_duration(filepath: Path) -> float | None:
         "default=noprint_wrappers=1:nokey=1",
         str(filepath),
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", check=False)
+    result = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+        env=tool_env(),
+    )
     try:
         return float(result.stdout.strip())
     except ValueError:
@@ -130,7 +142,15 @@ def get_chapters(filepath: Path) -> list[dict[str, object]]:
         "json",
         str(filepath),
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", check=False)
+    result = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+        env=tool_env(),
+    )
 
     try:
         data = json.loads(result.stdout)

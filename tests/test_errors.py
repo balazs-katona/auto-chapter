@@ -169,3 +169,21 @@ def test_the_retry_message_does_not_claim_plex_is_slow(monkeypatch, capsys) -> N
     out = capsys.readouterr().out
     assert "No answer from Plex yet; retrying..." in out
     assert "slow" not in out
+
+
+def test_short_error_mkvmerge_failure_shows_mkvmerge_s_reason() -> None:
+    """Never a guessed cause: the old text always said "The source may be
+    corrupt", whatever mkvmerge had reported."""
+    msg = short_error(
+        "mkvmerge failed: Error: The file '/m/F.mkv.autochapter.tmp' could not be "
+        "opened for writing: open file error."
+    )
+
+    assert msg == (
+        "mkvmerge couldn't write the file: The file '/m/F.mkv.autochapter.tmp' could "
+        "not be opened for writing: open file error."
+    )
+
+
+def test_short_error_mkvmerge_failure_without_a_message() -> None:
+    assert short_error("mkvmerge failed: ") == "mkvmerge couldn't write the file."

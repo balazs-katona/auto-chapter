@@ -20,6 +20,7 @@ from collections.abc import Callable
 from typing import Any
 
 from auto_chapter.console import console
+from auto_chapter.tool_env import tool_env
 
 SHUTDOWN_TIP_BATCH = "[dim]Press 's' to schedule shutdown after the batch.[/dim]"
 SHUTDOWN_TIP_SINGLE = "[dim]Press 's' to schedule shutdown once this movie is written.[/dim]"
@@ -133,7 +134,10 @@ def execute_shutdown_with_countdown(seconds: int = 30) -> None:
             ["systemctl", "poweroff"],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=10,
+            env=tool_env(),  # its error is shown as is: English, like the rest
         )
         if result.returncode != 0:
             msg = result.stderr.strip() or "unknown error"

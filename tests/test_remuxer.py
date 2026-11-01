@@ -112,3 +112,34 @@ def test_write_names_the_chapter_xml_after_the_movie_and_removes_it(
     assert result.success, result.error
     assert xml_paths == [tmp_path / "Film.mkv.autochapter.xml"]
     assert sorted(p.name for p in tmp_path.iterdir()) == ["Film.mkv"]  # nothing left over
+
+
+def test_a_failed_write_reports_what_mkvmerge_said(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """mkvmerge prints its errors to stdout, not stderr: reading only stderr
+    lost the reason, and the user always got "The source may be corrupt"."""
+    movie = tmp_path / "Film.mkv"
+    movie.write_bytes(b"x" * 1000)
+
+    class FailingMkvmerge:
+        returncode = 2
+
+        def communicate(self) -> tuple[str, str]:
+            stdout = (
+                "mkvmerge v103.0 ('The Darkness') 64-bit\n"
+                "Error: The file '/movies/Film.mkv.autochapter.tmp' could not be "
+                "opened for writing: open file error.\n"
+            )
+            return stdout, ""
+
+    monkeypatch.setattr(remuxer.subprocess, "Popen", lambda *_a, **_k: FailingMkvmerge())
+    chapters = [Chapter(name="Auto Chapter 1", timestamp=0.0, method=DetectionMethod.START)]
+
+    result = write_chapters_and_remux(movie, chapters, min_free_bytes=0)
+
+    assert not result.success
+    assert result.error == (
+        "mkvmerge failed: Error: The file '/movies/Film.mkv.autochapter.tmp' could not "
+        "be opened for writing: open file error."
+    )

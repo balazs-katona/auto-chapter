@@ -87,7 +87,13 @@ def short_error(e: Exception | str) -> str:
     if "input/output error" in lower or "i/o error" in lower:
         return "File system error. Check that the drive is connected and healthy."
     if "mkvmerge failed" in lower:
-        return "mkvmerge couldn't write the file. The source may be corrupt."
+        # mkvmerge's own reason (it runs in English, see tool_env), never a
+        # guessed cause: the old "The source may be corrupt" was shown for
+        # every failure, a read-only folder included.
+        reason = msg.partition("mkvmerge failed:")[2].strip().removeprefix("Error:").strip()
+        return f"mkvmerge couldn't write the file: {reason}" if reason else (
+            "mkvmerge couldn't write the file."
+        )
     if "output suspiciously small" in lower:
         return "The new file came out unexpectedly small. Skipping to protect the original."
     if "streamed" in lower and "movie" in lower:

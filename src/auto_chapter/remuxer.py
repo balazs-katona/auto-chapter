@@ -45,6 +45,7 @@ from auto_chapter.chapter.xml import to_xml
 from auto_chapter.console import console
 from auto_chapter.logging_setup import get_logger
 from auto_chapter.models import Chapter
+from auto_chapter.tool_env import tool_env
 
 log = get_logger(__name__)
 
@@ -98,6 +99,20 @@ def _build_mkvmerge_command(temp_output: Path, xml_path: Path, filepath: Path) -
         "--no-chapters",
         str(filepath),
     ]
+
+
+def _mkvmerge_problem(stdout: str, stderr: str) -> str:
+    """What mkvmerge said went wrong.
+
+    mkvmerge prints its errors to stdout ("Error: ..."), not stderr: reading
+    only stderr lost the reason (the user was told "The source may be
+    corrupt" even for a read-only folder).
+    """
+    lines = [line.strip() for line in f"{stdout}\n{stderr}".splitlines() if line.strip()]
+    errors = [line for line in lines if line.startswith("Error:")]
+    if errors:
+        return " ".join(errors)
+    return stderr.strip() or (lines[-1] if lines else "")
 
 
 def write_chapters_and_remux(
@@ -186,11 +201,13 @@ def write_chapters_and_remux(
                     stderr=subprocess.PIPE,
                     text=True,
                     encoding="utf-8",
+                    errors="replace",
                     start_new_session=True,  # isolate from terminal Ctrl+C
+                    env=tool_env(),
                 )
                 register_subprocess(proc)
                 try:
-                    _stdout, stderr = proc.communicate()
+                    stdout, stderr = proc.communicate()
                 finally:
                     register_subprocess(None)
             finally:
@@ -205,7 +222,7 @@ def write_chapters_and_remux(
         if proc.returncode >= 2:
             return RemuxResult(
                 success=False,
-                error=f"mkvmerge failed: {stderr.strip()[:300]}",
+                error=f"mkvmerge failed: {_mkvmerge_problem(stdout, stderr)[:300]}",
             )
 
         if not temp_output.exists():
