@@ -136,7 +136,7 @@ def prompt(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
 def test_credits_filter_all_with_credits_asks_nothing(prompt: SimpleNamespace) -> None:
     picked = [_movie("A", True), _movie("B", True)]
 
-    assert _ask_credits_filter(picked, "manual") == picked
+    assert _ask_credits_filter(picked) == picked
     assert prompt.choices == []  # no question was asked
 
 
@@ -144,7 +144,7 @@ def test_credits_filter_none_with_credits_can_be_cancelled(prompt: SimpleNamespa
     picked = [_movie("A", False), _movie("B", False)]
     prompt.answers = [0]
 
-    assert _ask_credits_filter(picked, "manual") is None
+    assert _ask_credits_filter(picked) is None
     assert prompt.choices == [["0", "1"]]
 
 
@@ -152,7 +152,7 @@ def test_credits_filter_none_with_credits_can_proceed_anyway(prompt: SimpleNames
     picked = [_movie("A", False), _movie("B", False)]
     prompt.answers = [1]
 
-    assert _ask_credits_filter(picked, "alphabetical") == picked
+    assert _ask_credits_filter(picked) == picked
     assert prompt.choices == [["0", "1"]]
 
 
@@ -161,7 +161,7 @@ def test_credits_filter_mixed_only_with_credits(prompt: SimpleNamespace) -> None
     picked = [credited[0], _movie("C", False), credited[1]]
     prompt.answers = [1]
 
-    assert _ask_credits_filter(picked, "manual") == credited
+    assert _ask_credits_filter(picked) == credited
     assert prompt.choices == [["0", "1", "2"]]
 
 
@@ -169,14 +169,14 @@ def test_credits_filter_mixed_process_all(prompt: SimpleNamespace) -> None:
     picked = [_movie("A", True), _movie("C", False), _movie("B", True)]
     prompt.answers = [2]
 
-    assert _ask_credits_filter(picked, "alphabetical") == picked
+    assert _ask_credits_filter(picked) == picked
 
 
 def test_credits_filter_mixed_can_be_cancelled(prompt: SimpleNamespace) -> None:
     picked = [_movie("A", True), _movie("C", False)]
     prompt.answers = [0]
 
-    assert _ask_credits_filter(picked, "manual") is None
+    assert _ask_credits_filter(picked) is None
 
 
 @pytest.mark.parametrize("exc", [KeyboardInterrupt, EOFError])
@@ -192,65 +192,38 @@ def test_credits_filter_interrupt_cancels(
     picked = [_movie(f"M{i}", has_credits) for i, has_credits in enumerate(flags)]
     prompt.answers = [exc()]
 
-    assert _ask_credits_filter(picked, "manual") is None
+    assert _ask_credits_filter(picked) is None
 
 
-@pytest.mark.parametrize(
-    ("context", "expected"),
-    [
-        ("manual", "None of the movies you selected have End Credits"),
-        ("alphabetical", "None of the movies in the list have End Credits"),
-    ],
-)
-def test_credits_filter_none_with_credits_wording_follows_context(
-    prompt: SimpleNamespace,
-    capsys: pytest.CaptureFixture[str],
-    context: str,
-    expected: str,
+def test_credits_filter_none_with_credits_wording(
+    prompt: SimpleNamespace, capsys: pytest.CaptureFixture[str]
 ) -> None:
     prompt.answers = [0]
 
-    _ask_credits_filter([_movie("A", False), _movie("B", False)], context)
+    _ask_credits_filter([_movie("A", False), _movie("B", False)])
 
     out = capsys.readouterr().out
-    assert expected in out
+    assert "None of the movies you selected have End Credits" in out
     assert "Process them anyway" in out
 
 
-@pytest.mark.parametrize(
-    ("context", "expected", "absent"),
-    [
-        ("manual", "Process all selected movies", "Include the movies without"),
-        ("alphabetical", "Include the movies without End Credits", "Process all"),
-    ],
-)
-def test_credits_filter_mixed_option_wording_follows_context(
-    prompt: SimpleNamespace,
-    capsys: pytest.CaptureFixture[str],
-    context: str,
-    expected: str,
-    absent: str,
+def test_credits_filter_mixed_option_wording(
+    prompt: SimpleNamespace, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """In alphabetical mode "how many?" still follows this question, so option 2
-    must not promise to process "all" movies; in manual mode the selection is
-    final, so it may."""
     prompt.answers = [0]
 
-    _ask_credits_filter([_movie("A", True), _movie("B", False)], context)
+    _ask_credits_filter([_movie("A", True), _movie("B", False)])
 
-    out = capsys.readouterr().out
-    assert expected in out
-    assert absent not in out
+    assert "Process all selected movies" in capsys.readouterr().out
 
 
 def test_credits_filter_single_movie_is_named_and_singular(
     prompt: SimpleNamespace, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """One movie reads naturally ("it", not "them") and is named, because in
-    alphabetical mode the user never saw which movie it is."""
+    """One movie reads naturally ("it", not "them") and is named."""
     prompt.answers = [0]
 
-    _ask_credits_filter([_movie("Heat", False, year=1995)], "alphabetical")
+    _ask_credits_filter([_movie("Heat", False, year=1995)])
 
     out = capsys.readouterr().out
     assert "Heat (1995) doesn't have End Credits detected by Plex yet." in out
@@ -265,16 +238,16 @@ def test_credits_filter_title_in_brackets_is_printed_literally(
     """Rich would swallow an unescaped "[rec]" as a style tag."""
     prompt.answers = [0]
 
-    _ask_credits_filter([_movie("[rec]", False, year=2007)], "manual")
+    _ask_credits_filter([_movie("[rec]", False, year=2007)])
 
     assert "[rec] (2007)" in capsys.readouterr().out
 
 
 # --- _process_first_n (alphabetical mode) ------------------------------------
 #
-# The End Credits question comes BEFORE "how many?", so the number counts from
-# what is left. Asked the other way round, "5" followed by "only the ones with
-# End Credits" would quietly process fewer than 5.
+# Generate's own menu chooses "for movies with End Credits" or "for all
+# movies" (0.4.0); the pool is narrowed before "how many?", so the number
+# counts from it.
 
 
 def _ten_movies() -> list[Movie]:
@@ -297,70 +270,73 @@ def batch(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
     return state
 
 
-def test_first_n_asks_credits_before_the_number(
+def test_first_n_with_end_credits_only_asks_just_how_many(
     prompt: SimpleNamespace, batch: SimpleNamespace
 ) -> None:
-    """"5" after "only the ones with End Credits" means five movies WITH End
-    Credits -- not 'the first five, minus the credit-less ones'."""
-    prompt.answers = [1, 5]  # 1) only the ones with End Credits, then "5"
+    """"5" means five movies WITH End Credits -- not 'the first five, minus
+    the credit-less ones'."""
+    prompt.answers = [5]
 
-    menu._process_first_n(_ten_movies(), None)
+    menu._process_first_n(_ten_movies(), None, credits_only=True)
 
-    assert [text for text, _, _ in prompt.asked] == ["Choose", "Number"]
+    assert [text for text, _, _ in prompt.asked] == ["Number"]
     assert batch.calls == [["M01", "M03", "M05", "M06", "M08"]]
 
 
-def test_first_n_default_is_the_whole_narrowed_list(
+def test_first_n_with_end_credits_only_defaults_to_all_of_them(
     prompt: SimpleNamespace, batch: SimpleNamespace
 ) -> None:
-    prompt.answers = [1, ENTER]
+    prompt.answers = [ENTER]
 
-    menu._process_first_n(_ten_movies(), None)
+    menu._process_first_n(_ten_movies(), None, credits_only=True)
 
-    assert prompt.asked[1][2] == 7  # default of "Number" = the 7 with End Credits
+    assert prompt.asked[0][2] == 7  # default of "Number" = the 7 with End Credits
     assert batch.calls == [["M01", "M03", "M05", "M06", "M08", "M09", "M10"]]
 
 
-def test_first_n_including_the_credit_less_counts_from_the_full_list(
-    prompt: SimpleNamespace, batch: SimpleNamespace
+def test_first_n_with_end_credits_only_but_none_has_them(
+    prompt: SimpleNamespace, batch: SimpleNamespace, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    prompt.answers = [2, 5]  # 2) include the ones without End Credits, then "5"
+    movies = [_movie(f"M{i:02d}", False) for i in range(1, 4)]
+
+    menu._process_first_n(movies, None, credits_only=True)
+
+    assert prompt.asked == []
+    assert batch.calls == []
+    assert "None of the movies has End Credits detected by Plex yet." in capsys.readouterr().out
+
+
+def test_first_n_all_movies_counts_from_the_full_list_and_says_what_it_means(
+    prompt: SimpleNamespace, batch: SimpleNamespace, capsys: pytest.CaptureFixture[str]
+) -> None:
+    prompt.answers = [5]
 
     menu._process_first_n(_ten_movies(), None)
 
-    assert prompt.asked[1][2] == 10
+    assert [text for text, _, _ in prompt.asked] == ["Number"]
+    assert prompt.asked[0][2] == 10
     assert batch.calls == [["M01", "M02", "M03", "M04", "M05"]]
+    assert "get no End Credits chapter now" in capsys.readouterr().out
 
 
-def test_first_n_with_nothing_credit_less_asks_only_how_many(
-    prompt: SimpleNamespace, batch: SimpleNamespace
+def test_first_n_all_movies_with_end_credits_says_nothing_extra(
+    prompt: SimpleNamespace, batch: SimpleNamespace, capsys: pytest.CaptureFixture[str]
 ) -> None:
     movies = [_movie(f"M{i:02d}", True) for i in range(1, 4)]
     prompt.answers = [ENTER]
 
     menu._process_first_n(movies, None)
 
-    assert [text for text, _, _ in prompt.asked] == ["Number"]
     assert batch.calls == [["M01", "M02", "M03"]]
-
-
-def test_first_n_cancel_at_credits_question_never_asks_the_number(
-    prompt: SimpleNamespace, batch: SimpleNamespace
-) -> None:
-    prompt.answers = [0]
-
-    menu._process_first_n(_ten_movies(), None)
-
-    assert [text for text, _, _ in prompt.asked] == ["Choose"]
-    assert batch.calls == []
+    assert "End Credits chapter now" not in capsys.readouterr().out
 
 
 def test_first_n_zero_at_the_number_prompt_cancels(
     prompt: SimpleNamespace, batch: SimpleNamespace
 ) -> None:
-    prompt.answers = [1, 0]
+    prompt.answers = [0]
 
-    menu._process_first_n(_ten_movies(), None)
+    menu._process_first_n(_ten_movies(), None, credits_only=True)
 
     assert batch.calls == []
 
@@ -368,9 +344,9 @@ def test_first_n_zero_at_the_number_prompt_cancels(
 def test_first_n_number_above_the_list_is_clamped(
     prompt: SimpleNamespace, batch: SimpleNamespace
 ) -> None:
-    prompt.answers = [1, 99]
+    prompt.answers = [99]
 
-    menu._process_first_n(_ten_movies(), None)
+    menu._process_first_n(_ten_movies(), None, credits_only=True)
 
     assert batch.calls == [["M01", "M03", "M05", "M06", "M08", "M09", "M10"]]
 
@@ -379,9 +355,9 @@ def test_first_n_number_above_the_list_is_clamped(
 def test_first_n_interrupt_at_the_number_prompt_cancels(
     prompt: SimpleNamespace, batch: SimpleNamespace, exc: type[BaseException]
 ) -> None:
-    prompt.answers = [1, exc()]
+    prompt.answers = [exc()]
 
-    menu._process_first_n(_ten_movies(), None)
+    menu._process_first_n(_ten_movies(), None, credits_only=True)
 
     assert batch.calls == []
 
@@ -390,13 +366,44 @@ def test_first_n_removes_processed_movies_and_keeps_the_rest(
     prompt: SimpleNamespace, batch: SimpleNamespace
 ) -> None:
     movies = _ten_movies()
-    prompt.answers = [1, 5]
+    prompt.answers = [5]
 
-    menu._process_first_n(movies, None)
+    menu._process_first_n(movies, None, credits_only=True)
 
     # The five processed movies are gone; the credit-less ones (and the two
     # credited ones beyond the five) stay in the list for later.
     assert [mv.title for mv in movies] == ["M02", "M04", "M07", "M09", "M10"]
+
+
+@pytest.mark.parametrize(
+    ("choice", "expected"),
+    [
+        (1, ["M01", "M03", "M05", "M06", "M08", "M09", "M10"]),
+        (2, ["M01", "M02", "M03", "M04", "M05", "M06", "M07", "M08", "M09", "M10"]),
+    ],
+)
+def test_generate_offers_end_credits_only_as_its_first_choice(
+    monkeypatch: pytest.MonkeyPatch,
+    prompt: SimpleNamespace,
+    batch: SimpleNamespace,
+    capsys: pytest.CaptureFixture[str],
+    choice: int,
+    expected: list[str],
+) -> None:
+    """The choice used to hide in a question that came only after "alphabetical
+    order" (and only when the list was mixed)."""
+    orch = _scan_flow_orch([])
+    orch.plex.iter_movie_candidates = lambda **_k: (_ten_movies(), ScanStats())
+    monkeypatch.setattr(menu, "_check_folder_reachability", lambda _cfg: (True, []))
+    prompt.answers = [choice, ENTER, 0]  # the choice, "how many" = all, then back
+
+    menu._generate_auto_chapters_flow(orch, orch.config)
+
+    out = capsys.readouterr().out
+    assert "1) Generate Auto Chapters for movies with End Credits" in out
+    assert "2) Generate Auto Chapters for all movies" in out
+    assert "3) Show the list and pick movies manually" in out
+    assert batch.calls == [expected]
 
 
 # --- _detect_and_confirm_write: the 's' listener vs. the "What now?" prompt --

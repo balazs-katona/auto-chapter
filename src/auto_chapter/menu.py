@@ -499,7 +499,7 @@ def _detect_and_confirm_write(mv: Movie, orch: Orchestrator) -> list[Movie]:
 
 # --- Scan status submenu ---
 
-def _ask_credits_filter(picked: list[Movie], context: str) -> list[Movie] | None:
+def _ask_credits_filter(picked: list[Movie]) -> list[Movie] | None:
     """Ask how to handle picked movies that don't have Plex End Credits yet.
 
     Design principle: movies WITH a Plex-detected End Credits are the ones the
@@ -512,11 +512,11 @@ def _ask_credits_filter(picked: list[Movie], context: str) -> list[Movie] | None
     - a mix                  -> only the ones with End Credits, or all of them
     - none has End Credits   -> cancel, or process them anyway
 
+    Asked for the manual pick only: the alphabetical modes choose up front
+    ("for movies with End Credits" / "for all movies", 0.4.0).
+
     Args:
-        picked: the movies about to be processed -- the whole list in
-            alphabetical mode (asked before "how many?"), or the user's own
-            selection in manual mode.
-        context: 'alphabetical' or 'manual', controls the wording.
+        picked: the user's own selection from the list.
 
     Returns:
         The (possibly filtered) movie list to process, or None if the user cancelled.
@@ -528,24 +528,14 @@ def _ask_credits_filter(picked: list[Movie], context: str) -> list[Movie] | None
         return picked  # everything already has End Credits -- nothing to ask
 
     if not with_credits:
-        return _ask_process_without_credits(picked, context)
+        return _ask_process_without_credits(picked)
 
-    if context == "manual":
-        lead = "Some of the movies you selected don't have End Credits detected by Plex yet."
-        option_all = "Process all selected movies"
-        option_only_text = (
-            "The movies without End Credits stay unprocessed. You can process\n"
-            "     them next time, once Plex has detected their End Credits."
-        )
-    else:
-        lead = "Some movies don't have End Credits detected by Plex yet."
-        # "How many?" still follows in this mode, so don't promise to process "all".
-        option_all = "Include the movies without End Credits"
-        option_only_text = (
-            "The movies without End Credits stay unprocessed for now. They'll\n"
-            "     show up again next time you scan, when you can process them\n"
-            "     once Plex has detected their End Credits."
-        )
+    lead = "Some of the movies you selected don't have End Credits detected by Plex yet."
+    option_all = "Process all selected movies"
+    option_only_text = (
+        "The movies without End Credits stay unprocessed. You can process\n"
+        "     them next time, once Plex has detected their End Credits."
+    )
 
     console.print(f"\n{lead}\n")
     console.print(
@@ -581,24 +571,19 @@ def _ask_credits_filter(picked: list[Movie], context: str) -> list[Movie] | None
     return picked
 
 
-def _ask_process_without_credits(
-    picked: list[Movie], context: str
-) -> list[Movie] | None:
+def _ask_process_without_credits(picked: list[Movie]) -> list[Movie] | None:
     """None of the picked movies has Plex End Credits yet: process anyway, or wait?
 
     Returns `picked` if the user decides to go ahead, None if they cancel.
-    The wording is singular for one movie, which is then named explicitly
-    (in alphabetical mode the user never saw which movie it is).
+    The wording is singular for one movie, which is then named explicitly.
     """
     single = len(picked) == 1
     subj, obj, poss = ("It", "it", "its") if single else ("They", "them", "their")
 
     if single:
         lead = f"{escape(picked[0].display)} doesn't have End Credits detected by Plex yet."
-    elif context == "manual":
-        lead = "None of the movies you selected have End Credits detected by Plex yet."
     else:
-        lead = "None of the movies in the list have End Credits detected by Plex yet."
+        lead = "None of the movies you selected have End Credits detected by Plex yet."
 
     console.print(f"\n{lead}")
     console.print(f"\n[bold]How would you like to handle {obj}?[/bold]")
@@ -664,7 +649,7 @@ def _show_list_and_pick(candidates: list[Movie], orch: Orchestrator) -> None:
     for mv in picked:
         console.print(f"  - {mv.display}")
 
-    filtered = _ask_credits_filter(picked, context="manual")
+    filtered = _ask_credits_filter(picked)
     if filtered is None:
         return  # cancelled
 
@@ -674,20 +659,33 @@ def _show_list_and_pick(candidates: list[Movie], orch: Orchestrator) -> None:
             candidates.remove(mv)
 
 
-def _process_first_n(candidates: list[Movie], orch: Orchestrator) -> None:
+def _process_first_n(
+    candidates: list[Movie], orch: Orchestrator, *, credits_only: bool = False
+) -> None:
     """Process the first N movies from the list, in alphabetical order.
 
-    The End Credits question comes FIRST, on the whole list, and only then
-    "how many?" -- so N counts from what is left. Asked the other way round,
-    "10" followed by "only the ones with End Credits" would quietly process
-    fewer than 10, because the credit-less movies among the first 10 are
-    dropped after the count was already taken.
+    credits_only: only the movies with End Credits detected by Plex -- chosen
+    in Generate's own menu (0.4.0, owner: the choice was hidden in a question
+    that came only after "alphabetical order"). The pool is narrowed BEFORE
+    "how many?", so N counts from it: "5" means five movies with End Credits.
 
     Mutates `candidates`: removes successfully processed movies.
     """
-    pool = _ask_credits_filter(candidates, context="alphabetical")
-    if pool is None:
-        return  # cancelled
+    if credits_only:
+        pool = [mv for mv in candidates if mv.has_plex_credits]
+        if not pool:
+            console.print(
+                "\n[yellow]None of the movies has End Credits detected by Plex yet.[/yellow]"
+            )
+            return
+    else:
+        pool = list(candidates)
+        if any(not mv.has_plex_credits for mv in pool):
+            # Processing these means doing the work twice: say so once.
+            console.print(
+                "\n[dim]The movies without End Credits get no End Credits chapter now. "
+                "The Update menu adds it later, once Plex has detected their End Credits.[/dim]"
+            )
 
     default = len(pool)
     console.print(
@@ -827,7 +825,8 @@ def _generate_auto_chapters_flow(orch: Orchestrator, config: Config) -> None:
         choice = _show_options(
             "What would you like to do?",
             [
-                "Generate Auto Chapters in alphabetical order",
+                "Generate Auto Chapters for movies with End Credits",
+                "Generate Auto Chapters for all movies",
                 "Show the list and pick movies manually",
             ],
             allow_cancel=True,
@@ -836,8 +835,10 @@ def _generate_auto_chapters_flow(orch: Orchestrator, config: Config) -> None:
         if choice == 0:
             return  # back to main menu
         if choice == 1:
-            _process_first_n(candidates, orch)
+            _process_first_n(candidates, orch, credits_only=True)
         elif choice == 2:
+            _process_first_n(candidates, orch)
+        elif choice == 3:
             _show_list_and_pick(candidates, orch)
         # Loop back: panel rebuilds with updated counts (no re-scan needed)
 

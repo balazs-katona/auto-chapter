@@ -149,7 +149,9 @@ Main menu
 1. **Pick option 1 (Generate Auto Chapters)** -- shows a stats panel: how
    many movies total, how many already have chapters (ours or from another
    source), and how many need processing.
-2. Choose **alphabetical order** or **manual pick** from the list.
+2. Choose **1) for movies with End Credits** (the ones Plex has already found
+   the end credits for -- recommended), **2) for all movies**, or **3) manual
+   pick** from the list.
 3. When asked how many to process, you can start small (type a number) to
    see the result on a couple of movies before committing to the rest --
    Enter alone processes all of them.
