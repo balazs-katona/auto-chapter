@@ -203,7 +203,8 @@ def test_credits_filter_none_with_credits_wording(
     _ask_credits_filter([_movie("A", False), _movie("B", False)])
 
     out = capsys.readouterr().out
-    assert "None of the movies you selected have End Credits" in out
+    assert "None of the movies you selected have Plex End Credits yet." in out
+    assert "run the Update menu yourself" in " ".join(out.split())  # the note wraps
     assert "Process them anyway" in out
 
 
@@ -226,7 +227,7 @@ def test_credits_filter_single_movie_is_named_and_singular(
     _ask_credits_filter([_movie("Heat", False, year=1995)])
 
     out = capsys.readouterr().out
-    assert "Heat (1995) doesn't have End Credits detected by Plex yet." in out
+    assert "Heat (1995) doesn't have Plex End Credits yet." in out
     assert "Process it anyway" in out
     assert "process them" not in out
     assert "their" not in out
@@ -303,7 +304,7 @@ def test_first_n_with_end_credits_only_but_none_has_them(
 
     assert prompt.asked == []
     assert batch.calls == []
-    assert "None of the movies has End Credits detected by Plex yet." in capsys.readouterr().out
+    assert "None of the movies has Plex End Credits yet." in capsys.readouterr().out
 
 
 def test_first_n_all_movies_counts_from_the_full_list_and_says_what_it_means(
@@ -316,7 +317,9 @@ def test_first_n_all_movies_counts_from_the_full_list_and_says_what_it_means(
     assert [text for text, _, _ in prompt.asked] == ["Number"]
     assert prompt.asked[0][2] == 10
     assert batch.calls == [["M01", "M02", "M03", "M04", "M05"]]
-    assert "get no End Credits chapter now" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "The movies without Plex End Credits get no End Credits chapter now." in out
+    assert "run the Update menu yourself to add it" in out
 
 
 def test_first_n_all_movies_with_end_credits_says_nothing_extra(
@@ -400,7 +403,7 @@ def test_generate_offers_end_credits_only_as_its_first_choice(
     menu._generate_auto_chapters_flow(orch, orch.config)
 
     out = capsys.readouterr().out
-    assert "1) Generate Auto Chapters for movies with End Credits" in out
+    assert "1) Generate Auto Chapters for movies with Plex End Credits" in out
     assert "2) Generate Auto Chapters for all movies" in out
     assert "3) Show the list and pick movies manually" in out
     assert batch.calls == [expected]

@@ -1,6 +1,6 @@
 # auto-chapter
 
-**v0.4.0**
+**v0.4.1**
 
 Automatic chapter marker generation for MKV movies on a Plex server.
 
@@ -69,15 +69,16 @@ Main menu
 ```
 
 - **Generate** scans your mapped folders, shows how many movies need chapters,
-  and processes them in alphabetical order -- **only the movies whose End
-  Credits Plex has already detected** (the first choice), or all of them --
-  or a manual pick from the list. You choose how many; Enter means all of
-  them. Writing starts right after that choice, with no extra question.
-  Movies without End Credits get no End Credits chapter now; the **Update**
-  menu adds it once Plex has found their credits. If a manual pick includes
-  such movies, you're asked how to handle them.
+  and processes them in alphabetical order -- **only the movies with Plex
+  End Credits** (end credits Plex has already detected; the first choice),
+  or all of them -- or a manual pick from the list. You choose how many;
+  Enter means all of them. Writing starts right after that choice, with no
+  extra question. Movies without Plex End Credits get no End Credits chapter
+  now; once Plex has found their end credits, run the **Update** menu
+  yourself to add it. If a manual pick includes such movies, you're asked
+  how to handle them.
 - **Update** catches movies that got their chapters before Plex had detected
-  the End Credits marker, and regenerates just those with the credits
+  their Plex End Credits, and regenerates just those with the End Credits
   chapter added.
 - **Find a movie by title** lets you (re)process one specific movie by name,
   including one that already has Auto Chapters. You see the chapters first

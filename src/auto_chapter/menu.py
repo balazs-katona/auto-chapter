@@ -513,7 +513,7 @@ def _ask_credits_filter(picked: list[Movie]) -> list[Movie] | None:
     - none has End Credits   -> cancel, or process them anyway
 
     Asked for the manual pick only: the alphabetical modes choose up front
-    ("for movies with End Credits" / "for all movies", 0.4.0).
+    ("for movies with Plex End Credits" / "for all movies", 0.4.0).
 
     Args:
         picked: the user's own selection from the list.
@@ -530,33 +530,33 @@ def _ask_credits_filter(picked: list[Movie]) -> list[Movie] | None:
     if not with_credits:
         return _ask_process_without_credits(picked)
 
-    lead = "Some of the movies you selected don't have End Credits detected by Plex yet."
+    lead = "Some of the movies you selected don't have Plex End Credits yet."
     option_all = "Process all selected movies"
     option_only_text = (
-        "The movies without End Credits stay unprocessed. You can process\n"
+        "The movies without Plex End Credits stay unprocessed. You can process\n"
         "     them next time, once Plex has detected their End Credits."
     )
 
     console.print(f"\n{lead}\n")
     console.print(
-        f"  With End Credits detected by Plex:       {len(with_credits)}\n"
-        f"  Without End Credits detected by Plex:    {len(without_credits)}"
+        f"  With Plex End Credits:                   {len(with_credits)}\n"
+        f"  Without Plex End Credits:                {len(without_credits)}"
     )
     console.print("\n[bold]How would you like to handle them?[/bold]")
     console.print("  [dim]0)[/dim] Cancel")
-    console.print("  [dim]1)[/dim] Process only the movies with End Credits detected by Plex")
+    console.print("  [dim]1)[/dim] Process only the movies with Plex End Credits")
     console.print(f"     {option_only_text}")
     console.print(f"  [dim]2)[/dim] {option_all}")
     console.print(
-        "     The movies without End Credits will get Auto Chapters now, but no End"
+        "     The movies without Plex End Credits will get Auto Chapters now, but no"
     )
     console.print(
-        "     Credits chapter. Once Plex detects their End Credits (usually within a"
+        "     End Credits chapter. Once Plex detects their End Credits (usually within"
     )
     console.print(
-        "     few days), the Update menu will offer to process them again, this time"
+        "     a few days), run the Update menu yourself to process them again, this"
     )
-    console.print("     with End Credits included.")
+    console.print("     time with the End Credits chapter included.")
 
     try:
         choice = IntPrompt.ask("Choose", choices=["0", "1", "2"], show_choices=True)
@@ -581,9 +581,9 @@ def _ask_process_without_credits(picked: list[Movie]) -> list[Movie] | None:
     subj, obj, poss = ("It", "it", "its") if single else ("They", "them", "their")
 
     if single:
-        lead = f"{escape(picked[0].display)} doesn't have End Credits detected by Plex yet."
+        lead = f"{escape(picked[0].display)} doesn't have Plex End Credits yet."
     else:
-        lead = "None of the movies you selected have End Credits detected by Plex yet."
+        lead = "None of the movies you selected have Plex End Credits yet."
 
     console.print(f"\n{lead}")
     console.print(f"\n[bold]How would you like to handle {obj}?[/bold]")
@@ -595,8 +595,8 @@ def _ask_process_without_credits(picked: list[Movie]) -> list[Movie] | None:
     console.print(f"  [dim]1)[/dim] Process {obj} anyway")
     _print_option_note(
         f"{subj} will get Auto Chapters now, but no End Credits chapter. Once Plex "
-        f"detects {poss} End Credits (usually within a few days), the Update menu "
-        f"will offer to process {obj} again, this time with End Credits included."
+        f"detects {poss} End Credits (usually within a few days), run the Update menu "
+        f"yourself to process {obj} again, this time with the End Credits chapter included."
     )
 
     try:
@@ -616,7 +616,7 @@ def _show_list_and_pick(candidates: list[Movie], orch: Orchestrator) -> None:
     """
     console.print(f"\n[bold]Movies ({len(candidates)}):[/bold]")
     for i, mv in enumerate(candidates, start=1):
-        marker = "" if mv.has_plex_credits else " [dim](no End Credits from Plex yet)[/dim]"
+        marker = "" if mv.has_plex_credits else " [dim](no Plex End Credits yet)[/dim]"
         console.print(f"  [dim]{i:>4})[/dim] {mv.display}{marker}")
 
     while True:
@@ -667,7 +667,7 @@ def _process_first_n(
     credits_only: only the movies with End Credits detected by Plex -- chosen
     in Generate's own menu (0.4.0, owner: the choice was hidden in a question
     that came only after "alphabetical order"). The pool is narrowed BEFORE
-    "how many?", so N counts from it: "5" means five movies with End Credits.
+    "how many?", so N counts from it: "5" means five movies with Plex End Credits.
 
     Mutates `candidates`: removes successfully processed movies.
     """
@@ -675,7 +675,7 @@ def _process_first_n(
         pool = [mv for mv in candidates if mv.has_plex_credits]
         if not pool:
             console.print(
-                "\n[yellow]None of the movies has End Credits detected by Plex yet.[/yellow]"
+                "\n[yellow]None of the movies has Plex End Credits yet.[/yellow]"
             )
             return
     else:
@@ -683,8 +683,9 @@ def _process_first_n(
         if any(not mv.has_plex_credits for mv in pool):
             # Processing these means doing the work twice: say so once.
             console.print(
-                "\n[dim]The movies without End Credits get no End Credits chapter now. "
-                "The Update menu adds it later, once Plex has detected their End Credits.[/dim]"
+                "\n[dim]The movies without Plex End Credits get no End Credits chapter "
+                "now. Once Plex has detected their End Credits, run the Update menu "
+                "yourself to add it.[/dim]"
             )
 
     default = len(pool)
@@ -800,8 +801,8 @@ def _generate_auto_chapters_flow(orch: Orchestrator, config: Config) -> None:
             f"  Movies with Auto Chapters:                        {auto_done}\n"
             f"\n"
             f"  [bold]Movies needing Auto Chapters:                     {len(candidates)}[/bold]\n"
-            f"    With End Credits detected by Plex:              {with_credits}\n"
-            f"    Without End Credits detected by Plex:           {without_credits}\n"
+            f"    With Plex End Credits:                          {with_credits}\n"
+            f"    Without Plex End Credits:                       {without_credits}\n"
             f"\n"
             f"  Too short (skipped):                              {stats.too_short}\n"
             f"  Non-MKV files (skipped):                          {stats.non_mkv}\n"
@@ -825,7 +826,7 @@ def _generate_auto_chapters_flow(orch: Orchestrator, config: Config) -> None:
         choice = _show_options(
             "What would you like to do?",
             [
-                "Generate Auto Chapters for movies with End Credits",
+                "Generate Auto Chapters for movies with Plex End Credits",
                 "Generate Auto Chapters for all movies",
                 "Show the list and pick movies manually",
             ],
@@ -854,7 +855,7 @@ def _update_end_credits_flow(orch: Orchestrator, config: Config) -> None:
     if not should_proceed:
         return
     try:
-        with _scan_progress("Scanning Plex for movies needing End Credits...") as on_progress:
+        with _scan_progress("Scanning Plex for movies needing an End Credits chapter...") as on_progress:
             candidates, stats = _scan_with_retry(
                 lambda: orch.plex.iter_credits_update_candidates(
                     min_duration_seconds=config.detection.min_duration_seconds,
@@ -904,7 +905,7 @@ def _update_end_credits_flow(orch: Orchestrator, config: Config) -> None:
                 )
             elif processed_so_far > 0:
                 console.print(
-                    "\n[green]Done. All movies have been updated with End Credits.[/green]"
+                    "\n[green]Done. All movies have been updated with the End Credits chapter.[/green]"
                 )
             else:
                 console.print(
