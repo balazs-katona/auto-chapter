@@ -1,6 +1,6 @@
 [project]
 name = "auto-chapter"
-version = "0.4.0"
+version = "0.4.1"
 description = "Automatic chapter marker generation for MKV movies on a Plex server"
 readme = "README.md"
 requires-python = ">=3.13"
