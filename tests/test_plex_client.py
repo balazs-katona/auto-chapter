@@ -871,3 +871,29 @@ def test_scanned_movies_never_reload_themselves(monkeypatch, tmp_path: Path) -> 
     client.iter_movie_candidates(chapter_threshold=4)
 
     assert [m._autoReload for m in movies] == [False, False, False]
+
+
+# ---------------------------------------------------------------------------
+# Find by title tells whether our own chapters end with the End Credits chapter
+# ---------------------------------------------------------------------------
+
+
+def test_the_search_knows_whether_our_chapters_end_with_the_credits_chapter(
+    monkeypatch, tmp_path: Path
+) -> None:
+    """Find by title listed such a movie as plain "already has Auto Chapters",
+    while Update offered it for a missing End Credits chapter."""
+    for name in ("Heat 1", "Heat 2"):
+        (tmp_path / f"{name}.mkv").write_bytes(b"fake")
+    complete = _make_fake_movie("/share/Heat 1.mkv", "Heat 1")
+    complete.chapters = _chapters(*(f"Auto Chapter {i}" for i in range(1, 6)), "Credits")
+    missing = _make_fake_movie("/share/Heat 2.mkv", "Heat 2")
+    missing.chapters = _chapters(*(f"Auto Chapter {i}" for i in range(1, 6)))
+    client = _scan_client(monkeypatch, tmp_path, [complete, missing])
+
+    movies, _stats = _search(client)
+
+    assert [(mv.title, mv.has_auto_chapters, mv.has_credits_chapter) for mv in movies] == [
+        ("Heat 1", True, True),
+        ("Heat 2", True, False),
+    ]

@@ -1,5 +1,6 @@
 """Tests for menu helpers: selection parsing and the End Credits question."""
 
+import dataclasses
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -1830,3 +1831,67 @@ def test_the_scan_line_counts_the_movies(
     getattr(menu, flow_name)(orch, orch.config)
 
     assert "1322 / 1322 movies" in capsys.readouterr().out
+
+
+# --- Find by title: the same status notes as the other menus -------------------
+
+
+def _find_movie(
+    title: str, *, auto: bool = False, credits_chapter: bool = False, plex_credits: bool = True
+) -> Movie:
+    return dataclasses.replace(
+        _movie(title, plex_credits),
+        has_auto_chapters=auto,
+        has_credits_chapter=credits_chapter,
+    )
+
+
+def test_find_by_title_list_says_what_each_match_needs(
+    find_flow: SimpleNamespace, prompt: SimpleNamespace, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A movie Update would offer (our chapters, no End Credits chapter, Plex
+    End Credits found) looked the same as a complete one."""
+    find_flow.found = [
+        _find_movie("Heat A", auto=True, credits_chapter=True),
+        _find_movie("Heat B", auto=True, credits_chapter=False),
+        _find_movie("Heat C", plex_credits=False),
+        _find_movie("Heat D"),
+    ]
+    prompt.answers = [0]  # cancel at the list
+
+    menu._find_by_title(find_flow.orch)
+
+    out = capsys.readouterr().out
+    assert "1) Heat A (2000)  (already has Auto Chapters)\n" in out
+    assert (
+        "2) Heat B (2000) (already has Auto Chapters, End Credits chapter missing -- "
+        "Plex End Credits found)" in " ".join(out.split())  # a long line may wrap
+    )
+    assert "3) Heat C (2000)  (no Plex End Credits yet)" in out
+    assert "4) Heat D (2000)\n" in out
+
+
+def test_find_by_title_single_match_says_the_credits_chapter_is_missing(
+    find_flow: SimpleNamespace, prompt: SimpleNamespace, capsys: pytest.CaptureFixture[str]
+) -> None:
+    find_flow.found = [_find_movie("Heat", auto=True, credits_chapter=False)]
+    prompt.answers = [0]
+
+    menu._find_by_title(find_flow.orch)
+
+    out = " ".join(capsys.readouterr().out.split())  # a long line may wrap
+    assert (
+        "Heat (2000) already has Auto Chapters, End Credits chapter missing -- "
+        "Plex End Credits found" in out
+    )
+
+
+def test_find_by_title_single_fresh_match_without_plex_end_credits(
+    find_flow: SimpleNamespace, prompt: SimpleNamespace, capsys: pytest.CaptureFixture[str]
+) -> None:
+    find_flow.found = [_find_movie("Heat", plex_credits=False)]
+    prompt.answers = [0]
+
+    menu._find_by_title(find_flow.orch)
+
+    assert "Found 1 match: Heat (2000)  (no Plex End Credits yet)" in capsys.readouterr().out

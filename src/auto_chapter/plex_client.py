@@ -421,6 +421,7 @@ class PlexClient:
                     plex_movie_obj=plex_movie,
                     has_auto_chapters=is_auto,
                     has_plex_credits=has_plex_credits,
+                    has_credits_chapter=is_auto and _ends_with_credits_chapter(chapters),
                 )
             )
             stats.candidates += 1
@@ -462,12 +463,7 @@ class PlexClient:
                 continue
             stats.with_auto_chapters += 1
 
-            # Check whether the file already has the End Credits chapter at the end
-            last = chapters[-1]
-            last_name = (
-                getattr(last, "title", None) or getattr(last, "tag", None) or ""
-            ).strip()
-            if last_name == CREDITS_CHAPTER_NAME:
+            if _ends_with_credits_chapter(chapters):
                 continue  # already has End Credits chapter, nothing to update
 
             # Has Plex detected the credits since?
@@ -619,6 +615,16 @@ def _local_file(
         return None, SkipReason.FILE_MISSING
     _cleanup_stale_tmp(local_path)
     return local_path, None
+
+
+def _ends_with_credits_chapter(chapters: list[Any]) -> bool:
+    """True if the last chapter is the app's End Credits chapter -- the Update
+    scan's rule, also shown by Find by title."""
+    if not chapters:
+        return False
+    last = chapters[-1]
+    name = getattr(last, "title", None) or getattr(last, "tag", None) or ""
+    return bool(name.strip() == CREDITS_CHAPTER_NAME)
 
 
 def _has_credits_marker(plex_movie: Any) -> bool:

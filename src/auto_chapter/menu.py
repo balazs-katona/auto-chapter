@@ -192,6 +192,24 @@ def _by_title(movies: list[Movie]) -> list[Movie]:
     return sorted(movies, key=lambda mv: _searchable(mv.display))
 
 
+def _auto_chapters_status(movie: Movie) -> str:
+    """Find by title on a movie with the app's own chapters: is it complete,
+    or would Update offer it (no End Credits chapter, Plex End Credits found)?"""
+    if not movie.has_credits_chapter and movie.has_plex_credits:
+        return "already has Auto Chapters, End Credits chapter missing -- Plex End Credits found"
+    return "already has Auto Chapters"
+
+
+def _match_note(movie: Movie) -> str:
+    """The note after a Find by title match, in the other menus' words
+    (owner, 0.4.2: a movie Update would offer looked complete here)."""
+    if movie.has_auto_chapters:
+        return f"  [yellow]({_auto_chapters_status(movie)})[/yellow]"
+    if not movie.has_plex_credits:
+        return "  [dim](no Plex End Credits yet)[/dim]"
+    return ""
+
+
 @contextlib.contextmanager
 def _scan_progress(label: str) -> Iterator[ScanProgress]:
     """The scan's line, kept up to date: "Scanning Plex... 300 / 1322 movies".
@@ -1049,12 +1067,7 @@ def _find_by_title(orch: Orchestrator) -> None:
             _print_skipped_matches(stats.skipped)
 
         if len(movies) > 1:
-            # Annotate matches that are already processed
-            labels = [
-                f"{mv.display}  [yellow](already has Auto Chapters)[/yellow]"
-                if mv.has_auto_chapters else mv.display
-                for mv in movies
-            ]
+            labels = [f"{escape(mv.display)}{_match_note(mv)}" for mv in movies]
             choice = _show_options(
                 f"Found {len(movies)} matches",
                 labels,
@@ -1069,7 +1082,7 @@ def _find_by_title(orch: Orchestrator) -> None:
         # If the picked movie already has Auto Chapters, ask explicitly for regeneration
         if movie.has_auto_chapters:
             choice = _show_options(
-                f"{movie.display} already has Auto Chapters",
+                f"{escape(movie.display)} {_auto_chapters_status(movie)}",
                 ["Regenerate them (replaces the existing Auto Chapters)"],
                 allow_cancel=True,
             )
@@ -1078,7 +1091,7 @@ def _find_by_title(orch: Orchestrator) -> None:
         elif len(movies) == 1:
             # Single fresh match -- one quick confirmation that this is the right movie
             choice = _show_options(
-                f"Found 1 match: {movie.display}",
+                f"Found 1 match: {escape(movie.display)}{_match_note(movie)}",
                 ["Yes, this is the movie I meant"],
                 allow_cancel=True,
             )

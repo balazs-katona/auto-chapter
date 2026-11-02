@@ -53,6 +53,8 @@ class Movie:
     plex_movie_obj: object | None = None  # opaque plexapi.video.Movie
     has_auto_chapters: bool = False  # True if already processed by auto-chapter
     has_plex_credits: bool = False  # True if Plex has detected the End Credits start
+    # True if the app's own chapters already end with the End Credits chapter
+    has_credits_chapter: bool = False
 
     @property
     def display(self) -> str:
