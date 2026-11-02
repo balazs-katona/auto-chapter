@@ -2,12 +2,14 @@
 
 import contextlib
 import textwrap
+from collections.abc import Iterator
 from functools import partial
 from pathlib import Path
 from typing import Any
 
 from rich.markup import escape
 from rich.panel import Panel
+from rich.progress import Progress, TextColumn
 from rich.prompt import IntPrompt, Prompt
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
@@ -39,7 +41,7 @@ from auto_chapter.logging_setup import get_logger
 from auto_chapter.models import Movie, ProcessingResult
 from auto_chapter.orchestrator import Orchestrator
 from auto_chapter.path_mapping import PathMapper, check_dir_with_timeout
-from auto_chapter.plex_client import SkippedMatch, SkipReason, _searchable
+from auto_chapter.plex_client import ScanProgress, SkippedMatch, SkipReason, _searchable
 from auto_chapter.shutdown import (
     SHUTDOWN_TIP_BATCH,
     SHUTDOWN_TIP_SINGLE,
@@ -188,6 +190,24 @@ def _by_title(movies: list[Movie]) -> list[Movie]:
     Not locale-aware on purpose: the order must not depend on the machine.
     """
     return sorted(movies, key=lambda mv: _searchable(mv.display))
+
+
+@contextlib.contextmanager
+def _scan_progress(label: str) -> Iterator[ScanProgress]:
+    """The scan's line, kept up to date: "Scanning Plex... 300 / 1322 movies".
+
+    The scan goes through Plex page by page (plex_client.SCAN_PAGE_SIZE movies
+    a request) and reports after each page. Before 0.3.1 the line stood still
+    for minutes and looked stuck.
+    """
+    console.print()
+    with Progress(TextColumn("[dim]{task.description}[/dim]"), console=console) as progress:
+        task = progress.add_task(label, total=None)
+
+        def update(done: int, total: int) -> None:
+            progress.update(task, description=f"{label} {done} / {total} movies")
+
+        yield update
 
 
 # --- Common workflows ---
@@ -742,15 +762,16 @@ def _generate_auto_chapters_flow(orch: Orchestrator, config: Config) -> None:
     should_proceed, known_unreachable = _check_folder_reachability(config)
     if not should_proceed:
         return
-    console.print("\n[dim]Scanning Plex...[/dim]")
     try:
-        candidates, stats = _scan_with_retry(
-            lambda: orch.plex.iter_movie_candidates(
-                chapter_threshold=config.detection.chapter_threshold,
-                min_duration_seconds=config.detection.min_duration_seconds,
-                known_unreachable_folders=known_unreachable,
+        with _scan_progress("Scanning Plex...") as on_progress:
+            candidates, stats = _scan_with_retry(
+                lambda: orch.plex.iter_movie_candidates(
+                    chapter_threshold=config.detection.chapter_threshold,
+                    min_duration_seconds=config.detection.min_duration_seconds,
+                    known_unreachable_folders=known_unreachable,
+                    on_progress=on_progress,
+                )
             )
-        )
     except KeyboardInterrupt:
         console.print("\n[yellow]Cancelled.[/yellow]")
         return
@@ -831,14 +852,15 @@ def _update_end_credits_flow(orch: Orchestrator, config: Config) -> None:
     should_proceed, known_unreachable = _check_folder_reachability(config)
     if not should_proceed:
         return
-    console.print("\n[dim]Scanning Plex for movies needing End Credits...[/dim]")
     try:
-        candidates, stats = _scan_with_retry(
-            lambda: orch.plex.iter_credits_update_candidates(
-                min_duration_seconds=config.detection.min_duration_seconds,
-                known_unreachable_folders=known_unreachable,
+        with _scan_progress("Scanning Plex for movies needing End Credits...") as on_progress:
+            candidates, stats = _scan_with_retry(
+                lambda: orch.plex.iter_credits_update_candidates(
+                    min_duration_seconds=config.detection.min_duration_seconds,
+                    known_unreachable_folders=known_unreachable,
+                    on_progress=on_progress,
+                )
             )
-        )
     except KeyboardInterrupt:
         console.print("\n[yellow]Cancelled.[/yellow]")
         return

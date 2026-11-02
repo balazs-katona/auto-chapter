@@ -1,7 +1,7 @@
 """Plex API client wrapper."""
 
 import unicodedata
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
@@ -18,6 +18,15 @@ from auto_chapter.path_mapping import PathMapper
 from auto_chapter.remuxer import CHAPTER_XML_SUFFIX, TEMP_OUTPUT_SUFFIX
 
 log = get_logger(__name__)
+
+# How many movies' full metadata (chapters, markers) one request asks Plex for.
+# Measured on the owner's server (1322 movies): 100 movies in ~1.4 s, while
+# asking movie by movie took ~0.24 s each -- 5-6 minutes of steady load. Pages
+# keep each request short, so Plex keeps serving its players in between.
+SCAN_PAGE_SIZE = 100
+
+# Called with (movies done, movies in scope) as a scan goes through the pages.
+ScanProgress = Callable[[int, int], None]
 
 
 class PlexUnavailableError(Exception):
@@ -300,6 +309,7 @@ class PlexClient:
         regenerate: bool = False,
         min_duration_seconds: int = 0,
         known_unreachable_folders: list[str] | None = None,
+        on_progress: ScanProgress | None = None,
     ) -> tuple[list[Movie], ScanStats]:
         """Scan all movie sections and return movies that need processing.
 
@@ -343,14 +353,25 @@ class PlexClient:
 
         title_lc = _searchable(title_filter) if title_filter else None
 
-        for plex_movie, plex_path in _movies_in_scope(sections, mapper):
-            stats.total_movies += 1
-
-            if title_lc and not any(
+        def matches_title(plex_movie: Any) -> bool:
+            assert title_lc is not None
+            return any(
                 title_lc in _searchable(t)
                 for t in (plex_movie.title, getattr(plex_movie, "originalTitle", None))
                 if t
-            ):
+            )
+
+        for plex_movie, plex_path in _movies_in_scope(
+            self._require_server(),
+            sections,
+            mapper,
+            # A title search needs the full metadata of the matching movies only.
+            fetch_full=matches_title if title_lc else None,
+            on_progress=on_progress,
+        ):
+            stats.total_movies += 1
+
+            if title_lc and not matches_title(plex_movie):
                 continue
 
             chapters = plex_movie.chapters or []
@@ -411,6 +432,7 @@ class PlexClient:
         *,
         min_duration_seconds: int = 0,
         known_unreachable_folders: list[str] | None = None,
+        on_progress: ScanProgress | None = None,
     ) -> tuple[list[Movie], CreditsScanStats]:
         """Scan for movies that have Auto Chapters but are missing the End Credits chapter,
         and where Plex has since detected a credits marker.
@@ -430,7 +452,9 @@ class PlexClient:
             known_unreachable_folders
         )
 
-        for plex_movie, plex_path in _movies_in_scope(sections, mapper):
+        for plex_movie, plex_path in _movies_in_scope(
+            self._require_server(), sections, mapper, on_progress=on_progress
+        ):
             stats.total_movies += 1
 
             chapters = plex_movie.chapters or []
@@ -508,22 +532,66 @@ class PlexClient:
             return False
 
 
-def _movies_in_scope(sections: list[Any], mapper: PathMapper) -> Iterator[tuple[Any, str]]:
+def _movies_in_scope(
+    server: Any,
+    sections: list[Any],
+    mapper: PathMapper,
+    *,
+    fetch_full: Callable[[Any], bool] | None = None,
+    on_progress: ScanProgress | None = None,
+) -> Iterator[tuple[Any, str]]:
     """Every movie under a folder with an enabled mapping, with its Plex file path.
 
     The scope check comes before anything else, so a movie in a disabled or
     unmapped folder never reaches any stat -- both scans count from here.
+
+    First Plex's plain listing of each section (title, file path; Plex pages it
+    itself), then the full metadata -- chapters and markers -- of
+    SCAN_PAGE_SIZE movies per request. The listing alone has no chapters or
+    markers, and touching them made plexapi reload every movie on its own: one
+    request per movie, ~5-6 minutes for 1322 movies. Auto-reload is switched
+    off on every object handed out, so an empty field (no chapters, no
+    original title) is taken as empty instead of starting a request.
+
+    fetch_full: which movies need the full metadata (a title search needs only
+    the matching ones); the others are yielded as listed.
+    on_progress(done, in scope): before the first page and after each page.
     """
+    in_scope: list[tuple[Any, str]] = []
     for section in sections:
         if section.type != "movie":
             continue
-        for plex_movie in section.all():
+        for listed in section.all():
+            listed._autoReload = False
             try:
-                plex_path = plex_movie.media[0].parts[0].file
+                plex_path = listed.media[0].parts[0].file
             except (IndexError, AttributeError):
                 continue  # can't determine scope -- skip silently
             if mapper.has_enabled_mapping_for(plex_path):
-                yield plex_movie, plex_path
+                in_scope.append((listed, plex_path))
+
+    total = len(in_scope)
+    if on_progress:
+        on_progress(0, total)
+    for start in range(0, total, SCAN_PAGE_SIZE):
+        page = in_scope[start : start + SCAN_PAGE_SIZE]
+        wanted = [m.ratingKey for m, _ in page if fetch_full is None or fetch_full(m)]
+        full: dict[Any, Any] = {}
+        if wanted:
+            keys = ",".join(str(k) for k in wanted)
+            for item in server.fetchItems(
+                f"/library/metadata/{keys}?includeChapters=1&includeMarkers=1"
+            ):
+                item._autoReload = False
+                full[item.ratingKey] = item
+        for listed, plex_path in page:
+            if listed.ratingKey in full:
+                yield full[listed.ratingKey], plex_path
+            elif listed.ratingKey not in wanted:
+                yield listed, plex_path
+            # else: gone from Plex since the listing -- left out
+        if on_progress:
+            on_progress(start + len(page), total)
 
 
 def _local_file(

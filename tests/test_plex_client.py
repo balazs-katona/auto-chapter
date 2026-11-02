@@ -341,6 +341,34 @@ def test_reconnect_picks_up_mutated_config_in_place(monkeypatch) -> None:
 # ---------------------------------------------------------------------------
 
 
+def _fake_plex_server(sections: list, name: str = "TEST") -> SimpleNamespace:
+    """A fake PlexServer over these sections. Like the real one, the scan lists
+    a section (section.all()) and then asks for the full metadata of a page
+    of movies at once (fetchItems on /library/metadata/<keys>); every such
+    request is recorded in `.batches` (the keys asked for)."""
+    by_key: dict[int, object] = {}
+    for section in sections:
+        for movie in section.all():
+            if not hasattr(movie, "ratingKey"):
+                movie.ratingKey = len(by_key) + 1
+            by_key[movie.ratingKey] = movie
+    batches: list[list[int]] = []
+
+    def fetch_items(ekey: str) -> list:
+        assert ekey.startswith("/library/metadata/")
+        assert "includeChapters=1" in ekey and "includeMarkers=1" in ekey
+        keys = [int(k) for k in ekey.removeprefix("/library/metadata/").split("?")[0].split(",")]
+        batches.append(keys)
+        return [by_key[k] for k in keys if k in by_key]
+
+    return SimpleNamespace(
+        friendlyName=name,
+        library=SimpleNamespace(sections=lambda: sections),
+        fetchItems=fetch_items,
+        batches=batches,
+    )
+
+
 def _make_fake_movie(plex_path: str, title: str):
     return SimpleNamespace(
         title=title,
@@ -377,9 +405,7 @@ def test_scan_skips_exists_check_for_movies_under_unreachable_folder(
         all=lambda: [good_movie, bad_movie],
         locations=["/share/good/", "/share/bad/"],
     )
-    fake_server = SimpleNamespace(
-        friendlyName="TEST", library=SimpleNamespace(sections=lambda: [fake_section])
-    )
+    fake_server = _fake_plex_server([fake_section])
 
     monkeypatch.setattr(plex_client_module, "PlexServer", lambda *a, **kw: fake_server)
     monkeypatch.setattr("auto_chapter.errors.time.sleep", lambda *_: None)
@@ -498,9 +524,7 @@ def _scan_client(
         all=lambda: movies,
         locations=["/share/"] if plex_folders is None else plex_folders,
     )
-    fake_server = SimpleNamespace(
-        friendlyName="TEST", library=SimpleNamespace(sections=lambda: [fake_section])
-    )
+    fake_server = _fake_plex_server([fake_section])
     monkeypatch.setattr(plex_client_module, "PlexServer", lambda *a, **kw: fake_server)
     monkeypatch.setattr("auto_chapter.errors.time.sleep", lambda *_: None)
     config = PlexConfig(url="http://fake:32400", token="tok")
@@ -788,3 +812,62 @@ def test_the_credits_scan_ignores_the_same_mappings(monkeypatch, tmp_path: Path)
     assert movies == []
     assert stats.total_movies == 0
     assert stats.ignored_mappings == ["/share/"]
+
+
+# ---------------------------------------------------------------------------
+# The scan asks Plex for the full metadata page by page
+#
+# The plain listing has no chapters or markers; touching them made plexapi
+# reload every movie on its own -- one request per movie, 5-6 minutes for
+# 1322 movies on the owner's server, Plex busy all the time. Now: the listing,
+# then SCAN_PAGE_SIZE movies per request.
+# ---------------------------------------------------------------------------
+
+
+def _many_movies(n: int) -> list:
+    return [_make_fake_movie(f"/share/Movie {i:04d}.mkv", f"Movie {i:04d}") for i in range(n)]
+
+
+@pytest.mark.parametrize("scan", ["generate", "update"])
+def test_the_scan_asks_plex_page_by_page(monkeypatch, tmp_path: Path, scan: str) -> None:
+    client = _scan_client(monkeypatch, tmp_path, _many_movies(250))
+    progress: list[tuple[int, int]] = []
+
+    if scan == "generate":
+        client.iter_movie_candidates(chapter_threshold=4, on_progress=lambda *p: progress.append(p))
+    else:
+        client.iter_credits_update_candidates(on_progress=lambda *p: progress.append(p))
+
+    assert [len(b) for b in client._server.batches] == [100, 100, 50]
+    assert progress == [(0, 250), (100, 250), (200, 250), (250, 250)]
+
+
+def test_movies_outside_the_mappings_are_not_fetched(monkeypatch, tmp_path: Path) -> None:
+    inside = _make_fake_movie("/share/In.mkv", "In")
+    outside = _make_fake_movie("/elsewhere/Out.mkv", "Out")
+    client = _scan_client(monkeypatch, tmp_path, [inside, outside])
+
+    client.iter_movie_candidates(chapter_threshold=4)
+
+    assert client._server.batches == [[inside.ratingKey]]
+
+
+def test_a_title_search_fetches_only_the_matching_movies(monkeypatch, tmp_path: Path) -> None:
+    movies = _many_movies(150)
+    client = _scan_client(monkeypatch, tmp_path, movies)
+
+    client.iter_movie_candidates(chapter_threshold=4, title_filter="Movie 0120")
+
+    assert client._server.batches == [[movies[120].ratingKey]]
+
+
+def test_scanned_movies_never_reload_themselves(monkeypatch, tmp_path: Path) -> None:
+    """With auto-reload on, plexapi asks Plex again for every empty field --
+    a movie without chapters or without an original title would cost one
+    request each, the very thing the pages are there to avoid."""
+    movies = _many_movies(3)
+    client = _scan_client(monkeypatch, tmp_path, movies)
+
+    client.iter_movie_candidates(chapter_threshold=4)
+
+    assert [m._autoReload for m in movies] == [False, False, False]

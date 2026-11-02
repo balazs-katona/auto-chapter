@@ -4,7 +4,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from types import SimpleNamespace
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import pytest
 
@@ -1795,3 +1795,28 @@ def test_titles_with_accents_sort_with_their_letter() -> None:
     assert [mv.title for mv in ordered] == [
         "Alien", "Árvácska", "Ében", "Őrült nők", "Oscar", "Zorro"
     ]
+
+
+@pytest.mark.parametrize("flow_name", ["_generate_auto_chapters_flow", "_update_end_credits_flow"])
+def test_the_scan_line_counts_the_movies(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    flow_name: str,
+) -> None:
+    """The scan used to show a still "Scanning Plex..." for minutes."""
+
+    def paging_scan(**kwargs: Any) -> tuple[list[Movie], Any]:
+        on_progress = kwargs["on_progress"]
+        for done in (0, 100, 1322):
+            on_progress(done, 1322)
+        stats = ScanStats() if flow_name == "_generate_auto_chapters_flow" else CreditsScanStats()
+        return [], stats
+
+    orch = _scan_flow_orch([])
+    orch.plex.iter_movie_candidates = paging_scan
+    orch.plex.iter_credits_update_candidates = paging_scan
+    monkeypatch.setattr(menu, "_check_folder_reachability", lambda _cfg: (True, []))
+
+    getattr(menu, flow_name)(orch, orch.config)
+
+    assert "1322 / 1322 movies" in capsys.readouterr().out
