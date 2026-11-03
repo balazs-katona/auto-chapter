@@ -3,6 +3,15 @@
 The everyday steps are in INSTALL.md. This file is for when you want to know
 more, or do things by hand.
 
+## Contents
+
+- [Installing the programs yourself](#installing-the-programs-yourself)
+- [How folder mapping works](#how-folder-mapping-works)
+- [What happens to your files](#what-happens-to-your-files)
+- [Safety features](#safety-features)
+- [Editing the settings by hand](#editing-the-settings-by-hand)
+- [Files it creates](#files-it-creates)
+
 ## Installing the programs yourself
 
 The installer offers to install what is missing on Debian / Ubuntu, Arch,

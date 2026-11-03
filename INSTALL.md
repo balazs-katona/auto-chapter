@@ -3,6 +3,17 @@
 auto-chapter adds chapters to the MKV movies on your Plex server, so you can
 jump through a movie on any Plex player.
 
+## Contents
+
+- [Before you start](#before-you-start)
+- [Install](#install)
+- [Finding your Plex token](#finding-your-plex-token)
+- [Mounting a network share](#mounting-a-network-share)
+- [First use](#first-use)
+- [Updating to a new version](#updating-to-a-new-version)
+- [Starting over or removing it](#starting-over-or-removing-it)
+- [Problems](#problems)
+
 ## Before you start
 
 You need:
