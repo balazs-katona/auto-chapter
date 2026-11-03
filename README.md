@@ -22,7 +22,8 @@ walks you through mapping your movie folders, and sets everything up. Zero
 folders mapped is fine too -- add them later from the app's Settings menu.
 When done, type `auto-chapter` from any directory to start.
 
-See **INSTALL.md** for the full installation guide and menu walkthrough.
+**INSTALL.md**: installation and first use, step by step. **ADVANCED.md**:
+details for advanced users.
 
 ## Requirements
 
@@ -51,8 +52,8 @@ gets the chapters, the other copy stays as it was. Until that other copy is
 deleted, the movie takes twice the space.
 
 Still, it writes into your movie collection: **keep a backup of anything you
-can't replace**, and try it on a few movies first. Details: "What Happens to
-My Files" in INSTALL.md.
+can't replace**, and try it on a few movies first. Details: "What happens to
+your files" in ADVANCED.md.
 
 ## What it does
 

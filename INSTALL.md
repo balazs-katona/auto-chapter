@@ -1,333 +1,148 @@
-# auto-chapter — Installation Guide
+# auto-chapter — Installation
 
-Automatic chapter marker generation for MKV movies on a Plex server.
+auto-chapter adds chapters to the MKV movies on your Plex server, so you can
+jump through a movie on any Plex player.
 
-## What This Tool Does
+## Before you start
 
-Finds MKV files on your Plex server without proper navigation chapters,
-generates chapter markers by analyzing the video for scene transitions
-(fade-to-black moments + scene changes), and writes them into the MKV files.
+You need:
+- a Linux computer (for example Ubuntu, Linux Mint, Debian, Fedora, openSUSE,
+  Arch, EndeavourOS, Manjaro)
+- a Plex Media Server that you manage
+- your movie folders reachable from this computer: on its own disk, or on a
+  NAS share mounted here (see [Mounting a network share](#mounting-a-network-share))
 
-After processing, Plex Analyze is triggered so the new chapters appear in
-all clients. Chapter thumbnails appear too if "Generate chapter thumbnails"
-is turned on in your Plex server's settings.
+The installer installs the other programs it needs (ffmpeg, mkvtoolnix, uv).
+It asks first, and asks for your password.
 
-## Requirements
+**auto-chapter rewrites your movie files** to add the chapters. Keep a backup
+of anything you can't replace, and try it on a few movies first.
 
-These tools are needed:
+## Install
 
-- **uv** (Python package manager)
-- **ffmpeg** and **ffprobe** (video analysis; FFmpeg **4.4 or newer** -- the detection
-  needs the `blackdetect` and `scdet` filters, and the installer checks for them)
-- **mkvmerge** and **mkvextract** (from mkvtoolnix)
-- **timeout** (part of GNU coreutils -- already on virtually every Linux system)
+1. Unpack the zip and go into its folder:
+   ```
+   unzip auto-chapter-vX.Y.Z.zip
+   cd auto-chapter-vX.Y.Z
+   ```
+2. Start the installer:
+   ```
+   ./install.sh
+   ```
+3. Answer its questions:
+   - **Install them now?** -- only if a program is missing. Type `y`.
+   - **Plex server** -- its address, for example `192.168.1.100:32400`
+   - **Plex token** -- see [Finding your Plex token](#finding-your-plex-token)
+   - **Where is Plex running?** -- on this computer, or on another machine
+     (for example a NAS). For another machine it goes through Plex's movie
+     folders: choose Use or Skip, then type where that folder is on this
+     computer (for example `/mnt/nas/Movies`). It shows how many of Plex's
+     movies it found there. If it found none, the path is probably wrong.
 
-**The installer finds what is missing and offers to install it for you** on
-Debian / Ubuntu, Arch, Fedora and openSUSE, and on systems based on them
-(Linux Mint, EndeavourOS, Manjaro, ...). It shows the commands, asks once,
-and asks for your password (`sudo`) if you say yes. On other systems it
-tells you what to install.
+   You can skip folders and add them later in the app:
+   Settings → Folder mappings.
 
-To install them yourself instead:
-
-Arch Linux:
+When it's done, start the app:
 ```
-sudo pacman -S uv ffmpeg mkvtoolnix-cli
+auto-chapter
 ```
+If the installer says to open a new terminal first, do that.
 
-Debian / Ubuntu:
-```
-sudo apt install ffmpeg mkvtoolnix curl
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
+## Finding your Plex token
 
-You also need:
-- A Plex Media Server you have admin access to
-- The MKV files accessible from this machine (locally or via mounted network share)
+1. Open the Plex web app and go to any movie's page
+2. Click the three dots, then **Get Info**
+3. At the bottom of the window, click **View XML**
+4. In the browser's address bar, go to the very end and copy the text after
+   `X-Plex-Token=` (about 20 letters and digits)
 
-## Installation
+Plex's own guide:
+https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/
 
-### 1. Extract the package
+## Mounting a network share
 
-```
-cd ~/projects   # or wherever you want it
-unzip auto-chapter-vX.Y.Z.zip
-cd auto-chapter-vX.Y.Z
-```
+If your movies are on a NAS, they have to be a normal folder on this
+computer. The address your file manager shows (`smb://nas.local/Multimedia`)
+is not a folder, so mount the share first. For an SMB (Windows/Samba) share,
+in a terminal:
 
-### 2. Make the installer executable and run it
-
-```
-chmod +x install.sh
-./install.sh
-```
-
-The installer will ask you for:
-
-0. **Only if a tool is missing:** "Install them now? (y/n)" -- see
-   Requirements above
-1. **Plex server address** -- e.g. `192.168.1.100:32400`
-2. **Plex authentication token** -- see below how to find it
-3. **Where Plex runs** -- on this computer, or on another machine such as a
-   NAS. On another machine it then goes through Plex's movie folders one by
-   one: use or skip each, and type where it is mounted on this computer
-   (see "Why path mapping?" below). It then shows how many of the movies
-   Plex has in that folder it found there -- if none, the path is probably
-   wrong, and you can type another one
-
-You can skip folder mapping entirely and add folders later from
-Settings inside the app -- the installer won't force you to configure
-everything up front.
-
-#### Why path mapping?
-
-Plex and auto-chapter may see the same files at different paths.
-
-**Example 1 -- Plex runs on the same machine:**
-- Plex path: `/home/user/Movies/`
-- Local path: `/home/user/Movies/`
-- Same path: answer "On this machine" and the installer maps every folder
-  for you, without asking.
-
-**Example 2 -- Plex runs on a NAS, you mount it via SMB:**
-- Plex (on NAS) sees: `/share/Multimedia/Movies/`
-- This machine (via mount) sees: `/mnt/nas/Movies/`
-- Different paths, mapping is essential.
-
-auto-chapter uses the Plex API to find movies (which returns Plex-side paths)
-but reads/writes files locally (which needs the local path). The mapping
-translates between the two. The installer auto-discovers your Plex movie
-folders and lets you map or skip each one. A skipped folder can be mapped later
-in Settings → Folder mappings, which also tells you which Plex folders still
-have no mapping. Adding or changing a mapping there also shows how many of
-Plex's movies are in the folder you typed.
-
-#### Mounting a network share
-
-If your movies are on a NAS, auto-chapter needs them as a normal folder on
-this computer, because it reads and writes the movie files directly. The
-address a file manager shows for a share (`smb://nas.local/Multimedia`) is
-not a folder path, so mount the share first. One way that lasts across
-restarts, for an SMB (Windows/Samba) share:
-
-1. Install the SMB mount tools: the package is called `cifs-utils` on
-   Arch, Debian/Ubuntu, Fedora and openSUSE.
-2. Make an empty folder for it: `sudo mkdir -p /mnt/nas`
-3. Put the NAS login into a file only you can read, `~/.smbcredentials`:
+1. Install the package `cifs-utils` (Ubuntu/Debian: `sudo apt install
+   cifs-utils`, Fedora: `sudo dnf install cifs-utils`, Arch: `sudo pacman -S
+   cifs-utils`, openSUSE: `sudo zypper install cifs-utils`)
+2. Make a folder for it: `sudo mkdir -p /mnt/nas`
+3. Save your NAS login in a file only you can read: create `~/.smbcredentials`
+   with these two lines, then run `chmod 600 ~/.smbcredentials`
    ```
    username=YOUR-NAS-USER
    password=YOUR-NAS-PASSWORD
    ```
-   then: `chmod 600 ~/.smbcredentials`
-4. Add one line to `/etc/fstab` (`sudo nano /etc/fstab`; replace the NAS
-   name, the share and `you` with your own; `id -u` and `id -g` show your
-   two numbers if they aren't 1000):
+4. Open `/etc/fstab` (`sudo nano /etc/fstab`) and add this line at the end.
+   Change the NAS name, the share name and `you` to your own (`1000` is the
+   usual user number; `id -u` and `id -g` show yours):
    ```
    //nas.local/Multimedia  /mnt/nas  cifs  credentials=/home/you/.smbcredentials,uid=1000,gid=1000,iocharset=utf8,_netdev,nofail  0  0
    ```
-   `uid`/`gid` make the files yours, so auto-chapter can write them;
-   `nofail` lets the computer start even when the NAS is off.
 5. Mount it: `sudo systemctl daemon-reload && sudo mount /mnt/nas`
 
-The folder path is now under `/mnt/nas/` -- for example
-`/mnt/nas/Movies/`. That is what you type when the installer, or Settings →
-Folder mappings, asks where the folder is mounted on this computer.
+Your movies are now under `/mnt/nas/`, for example `/mnt/nas/Movies/`. Type
+that path when the installer or the app asks where the folder is on this
+computer. The share is mounted again after every restart.
 
-For an NFS share, steps 3 and 4 are simpler -- no login file, and this
-line in `/etc/fstab`:
-```
-nas.local:/share/Multimedia  /mnt/nas  nfs  _netdev,nofail  0  0
-```
-The package for it is `nfs-utils` (Debian/Ubuntu: `nfs-common`, openSUSE:
-`nfs-client`).
+## First use
 
-#### How to find your Plex token
+1. In the main menu choose **1) Generate Auto Chapters**. You see how many
+   movies need chapters.
+2. Choose **1) for movies with Plex End Credits** (recommended).
+3. Type a small number first (for example `2`) to try it. Enter alone does
+   all of them.
+4. Check in Plex that the chapters are there, then do the rest.
 
-1. Open the Plex web app and go to any movie's info page
-2. Click the three dots on the movie, then 'Get Info'
-3. At the bottom of the popup, click 'View XML'
-4. In the browser address bar, go to the very end of the URL: copy the
-   value after `X-Plex-Token=` (about 20 letters and digits)
+While it works: `Ctrl+C` once stops after the current movie, twice stops at
+once. `s` switches the computer off when the work is done.
 
-Official guide:
-https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/
+Later, when new movies arrive, just run **Generate** again. **Update** adds
+the End Credits chapter to movies that have Plex End Credits now but didn't
+when they got their chapters.
 
-### 3. After installation
-
-The installer:
-- Saves your configuration to `~/.config/auto-chapter/` (`config.yml` and
-  `.env`), outside the app folder, so it survives an update
-- Installs an `auto-chapter` command (a symlink in `~/.local/bin`, on PATH
-  for every shell -- not a shell alias)
-- Asks if you want to start it now
-
-Usually the command works right away. If your terminal doesn't know it yet,
-the installer says what to do: open a new terminal, or add the one line it
-shows to your shell config. Then just type:
-
-```
-auto-chapter
-```
-
-That's the only command you need to remember.
-
-## Usage
-
-When you run `auto-chapter`, an interactive menu appears:
-
-```
-Main menu
-  0) Quit
-  1) Generate Auto Chapters
-  2) Update Auto Chapters with missing Plex End Credits
-  3) Find a movie by title
-  4) Settings
-  5) About
-```
-
-### Recommended first time
-
-1. **Pick option 1 (Generate Auto Chapters)** -- shows a stats panel: how
-   many movies total, how many already have chapters (ours or from another
-   source), and how many need processing.
-2. Choose **1) for movies with Plex End Credits** (the ones Plex has already
-   found the end credits for -- recommended), **2) for all movies**, or
-   **3) manual pick** from the list.
-3. When asked how many to process, you can start small (type a number) to
-   see the result on a couple of movies before committing to the rest --
-   Enter alone processes all of them.
-4. Writing starts right after that choice -- there is no further question.
-   Progress is shown per movie; `Ctrl+C` once finishes the current movie
-   then stops, twice stops immediately. Press `s` to switch the computer off
-   when the batch is done (`s` again cancels; a 30-second countdown that
-   `Ctrl+C` stops comes first).
-
-### Later, when new movies arrive
-
-Same as above -- **Generate Auto Chapters** only shows movies that still
-need it, so re-running periodically is the normal way to keep things
-current. **Update Auto Chapters with missing Plex End Credits** catches
-movies that were processed before Plex had detected their credits marker,
-whenever you're ready to top those up too.
-
-### Configuring things later
-
-Everything from the installer (folder mappings, minimum movie length,
-chapter-count threshold, Plex URL/token) can also be changed from
-**Settings** inside the app -- no need to re-run the installer or hand-edit
-`config.yml` for routine changes.
-
-## What Happens to My Files
-
-1. **Detection** reads the file but never modifies it.
-2. **Writing** creates a temporary copy (`movie.mkv.autochapter.tmp`) with
-   chapters embedded, then atomically replaces the original. If anything
-   goes wrong (power loss, network drop, a kill signal), the original stays
-   intact -- only the half-written temp file is left behind, and the next
-   scan cleans it up automatically.
-3. The new file contains identical video, audio, and subtitle streams
-   (bit-for-bit). Only the container structure is rebuilt.
-4. A hard link (one file under two names, for example in a download folder
-   and in the Plex folder) is split: the new file replaces the old one at
-   the Plex path, the other copy stays as it was. Until that other copy is
-   deleted, the movie takes twice the space.
-
-## Safety Features
-
-- **You decide what gets written** -- Generate and Update process exactly
-  the movies you chose (and how many); Find by title shows the chapters and
-  asks before writing
-- **Active stream check**: a movie currently being watched is skipped
-- **Disk space check**: requires file size + 5 GB free before starting
-- **Atomic write**: temp file -> replace, interruption-safe
-- **Stale temp file cleanup**: if a previous run was killed mid-write, the
-  leftover is identified and removed automatically on the next scan
-- **Doesn't crash if Plex is unreachable**: starts normally, retries
-  automatically when you try to use it, and Settings always gives you a
-  way to check or fix the connection
-- **Doesn't get stuck on a bad network share**: folder checks are time-
-  bounded, so even a mount that's stopped responding can't lock you out of
-  fixing it
-- **Required tools re-checked on every launch**: catches a missing
-  ffmpeg/mkvmerge/etc. right away with a clear message, not partway
-  through processing
-
-## Troubleshooting
-
-**The installer keeps asking for the Plex token**
-Just paste it again -- the prompt loops until it gets something that looks
-like a valid token (roughly 20 alphanumeric characters). Make sure you
-copied only the token itself, not the surrounding URL.
-
-**"No movie found matching ..."**
-The search looks for a part of the title shown in Plex or of the original
-title, with or without accents. It does not forgive typos: check the
-spelling, or type a shorter part of the title.
-
-**Detection takes a long time**
-Detection runs FFmpeg over the file. Over the network, expect about 5-15
-minutes for a 2-hour movie (measured: about 10 minutes on a home LAN to a
-NAS); WiFi is slower. Use ethernet, or process movies during off-hours.
-
-**"Not enough disk space"**
-The destination drive needs enough room for an extra full-size copy of the
-movie during remux. Free up space and retry.
-
-**"The movie is currently being streamed"**
-Someone is watching this movie via Plex. Wait for them to stop, then retry.
-
-**"No answer from Plex yet; retrying..."**
-Usually Plex just needs a moment after being idle. auto-chapter tries
-three times before it reports an error. If it keeps happening, check that
-the Plex server is running and its address is right (Settings → Plex
-connection).
+Everything you set in the installer can be changed in the app's **Settings**.
 
 ## Updating to a new version
 
-Your settings and token are in `~/.config/auto-chapter/`, not in the app
-folder, so you can simply replace the app folder:
-
+Your settings are kept outside the app folder, so just replace the folder:
 ```
-cd ~/projects
-rm -rf auto-chapter-vOLD          # the folder of the version you had
+rm -rf auto-chapter-vOLD
 unzip auto-chapter-vX.Y.Z.zip
 cd auto-chapter-vX.Y.Z
 ./install.sh
 ```
+The installer finds your settings and asks nothing again.
 
-`./install.sh` finds your existing settings and asks nothing again; it only
-rebuilds the Python environment and the `auto-chapter` command. Until you run
-it, the `auto-chapter` command does not work (it points into the folder you
-just replaced).
+## Starting over or removing it
 
-## Reconfiguring
-
-For routine changes (folder mappings, Plex URL/token, minimum movie length,
-chapter threshold), use **Settings** inside the app -- no restart or
-reinstall needed.
-
-Running `./install.sh` again keeps your existing settings. To start over from
-scratch, delete the settings folder first, then run the installer:
-
+To set everything up again from the beginning:
 ```
 rm -rf ~/.config/auto-chapter
 ./install.sh
 ```
+To remove auto-chapter completely, delete the app folder, the
+`~/.config/auto-chapter` folder and the file `~/.local/bin/auto-chapter`.
 
-If you do edit the folder paths under `paths:` by hand: the `plex:` path must be
-exactly a movie folder as Plex lists it (Settings > Folder mappings shows which
-ones are), and the `local:` path must start with `/`. A missing `/` at the end
-is added for you. A `plex:` path that is not exactly one of Plex's folders (for
-example its parent folder) is not used, and the app tells you so.
+## Problems
 
-## Files Created
+**It takes a long time** -- each movie is read from start to end. Over the
+network expect 5-15 minutes for a 2-hour movie; a cable is faster than WiFi.
 
-In `~/.config/auto-chapter/` (or `$XDG_CONFIG_HOME/auto-chapter/`; the folder is
-readable only by you):
-- `config.yml` -- your configuration
-- `.env` -- your Plex token (chmod 600, never committed)
-- `logs/` -- structured log file (JSON, one line per event; optional)
+**"Not enough disk space"** -- while it works, the movie's drive needs room
+for one more copy of the movie, plus 5 GB.
 
-In the app folder:
-- `auto-chapter` -- the launcher script (symlinked from `~/.local/bin`)
-- `.venv/` -- Python virtual environment (managed by uv)
+**"The movie is currently being streamed"** -- someone is watching it in Plex.
+Try again when they've stopped.
+
+**"Not connected to Plex"** -- check that Plex is running, and its address and
+token in Settings → Plex connection.
+
+**"No movie found matching ..."** -- check the spelling, or type a shorter
+part of the title.
+
+More details (installing the programs yourself, how files are written,
+editing the settings file by hand): ADVANCED.md.
