@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Balazs Katona
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Tests for shutdown: ShutdownToggle behavior and countdown cancellation.
 
 These verify the parts that are hard to check manually:

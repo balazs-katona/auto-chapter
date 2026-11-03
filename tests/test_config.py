@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Balazs Katona
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Tests for PathMapping: paths are checked and normalised when a mapping is built.
 
 A hand-edited config.yml must not be able to produce a mapping that translates

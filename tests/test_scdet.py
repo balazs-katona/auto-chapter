@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Balazs Katona
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Tests for scdet parser."""
 
 from auto_chapter.detector.scdet import parse_best_scene

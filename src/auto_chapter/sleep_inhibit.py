@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Balazs Katona
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Keep the computer awake while auto-chapter works.
 
 While detection or a write runs, the machine must not go to sleep because it

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Balazs Katona
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Rich helpers for CLI output formatting."""
 
 from collections.abc import Sequence

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Balazs Katona
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Tests for batch_control: signal handlers, subprocess registration, force stop.
 
 These tests directly exercise the signal-handling code paths that are hard to

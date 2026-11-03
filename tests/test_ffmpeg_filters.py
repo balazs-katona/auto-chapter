@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Balazs Katona
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Tests for ffmpeg_filter_problem: the detection needs the blackdetect and
 scdet filters, and an ffmpeg without them (FFmpeg 4.2 has no scdet) would only
 fail in the middle of a detection."""

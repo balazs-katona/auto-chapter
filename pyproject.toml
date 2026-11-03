@@ -18,6 +18,10 @@ dependencies = [
     "ruamel-yaml>=0.18",
 ]
 
+[project.urls]
+Homepage = "https://github.com/balazs-katona/auto-chapter"
+Issues = "https://github.com/balazs-katona/auto-chapter/issues"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0.0",

@@ -19,7 +19,8 @@ jump through a movie on any Plex player.
 You need:
 - a Linux computer (for example Ubuntu, Linux Mint, Debian, Fedora, openSUSE,
   Arch, EndeavourOS, Manjaro). Tested on EndeavourOS and Ubuntu. Fedora and
-  openSUSE should work but haven't been tested yet -- reports are welcome.
+  openSUSE should work but haven't been tested yet -- reports are welcome:
+  https://github.com/balazs-katona/auto-chapter/issues
 - a Plex Media Server that you manage
 - your movie folders reachable from this computer: on its own disk, or on a
   NAS share mounted here (see [Mounting a network share](#mounting-a-network-share))

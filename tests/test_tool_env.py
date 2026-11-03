@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Balazs Katona
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Tests for the environment the external tools run in.
 
 mkvmerge (and systemctl) translate their messages into the user's language

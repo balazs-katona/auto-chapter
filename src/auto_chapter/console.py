@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Balazs Katona
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Shared Rich Console instance.
 
 Every module that prints to the terminal, or runs a Progress/Live display,

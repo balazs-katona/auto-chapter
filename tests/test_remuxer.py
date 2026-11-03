@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Balazs Katona
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Tests for the mkvmerge wrapper: the command line that swaps the chapters.
 
 What these guard against: ``mkvmerge --chapters new.xml input.mkv`` does NOT

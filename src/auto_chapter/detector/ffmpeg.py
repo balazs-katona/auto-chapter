@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Balazs Katona
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Low-level FFmpeg/ffprobe subprocess wrappers."""
 
 import json

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Balazs Katona
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Data models for movies, chapters, and processing results."""
 
 from dataclasses import dataclass, field

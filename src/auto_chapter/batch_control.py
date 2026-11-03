@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Balazs Katona
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Coordinated Ctrl+C handling for batch operations.
 
 Design: the signal handler only sets flags; it never raises. The main code

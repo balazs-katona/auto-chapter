@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Balazs Katona
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Tests for auto_chapter.errors: retry_on_plex_timeout, friendly_plex_error,
 short_error.
 

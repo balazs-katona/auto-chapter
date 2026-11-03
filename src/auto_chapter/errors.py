@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Balazs Katona
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Shared error-formatting and retry helpers for Plex connectivity.
 
 Lives outside menu.py so plex_client.py can use the same friendly-message

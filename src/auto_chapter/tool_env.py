@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Balazs Katona
+# SPDX-License-Identifier: GPL-3.0-or-later
 """The environment every external tool runs in.
 
 Every subprocess the app starts (ffmpeg, ffprobe, mkvmerge, systemctl,

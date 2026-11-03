@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Balazs Katona
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Tests for blackdetect parser."""
 
 from auto_chapter.detector.blackdetect import parse_first_black

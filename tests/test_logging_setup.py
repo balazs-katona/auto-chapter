@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Balazs Katona
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Tests for setup_logging: verifies the log file actually receives content.
 
 Regression test for a real bug: structlog's default logger_factory

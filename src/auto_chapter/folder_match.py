@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Balazs Katona
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Does a folder on this computer hold the movies Plex has in one of its folders?
 
 Asked when a folder mapping is added or changed, in the app and in the

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Balazs Katona
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Tests for the questions of install.sh: with no input at all (started with a
 double click, from a script, or Ctrl+D), every question used to print its
 "Please type ..." line forever instead of stopping."""

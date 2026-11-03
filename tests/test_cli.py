@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Balazs Katona
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Tests for _check_required_tools: re-verified on every launch, not just
 at install time, since a tool can vanish after installation (a system
 update, a manual removal)."""

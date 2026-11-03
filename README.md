@@ -17,6 +17,7 @@ on any device.
 - [What it does](#what-it-does)
 - [Features](#features)
 - [Development](#development)
+- [License](#license)
 
 ## Quick Start
 
@@ -39,7 +40,8 @@ details for advanced users.
 - Linux with systemd. On Debian/Ubuntu, Arch, Fedora and openSUSE (and
   systems based on them) the installer can install the tools below for you.
   Tested on EndeavourOS and Ubuntu. Fedora and openSUSE should work but
-  haven't been tested yet -- reports are welcome.
+  haven't been tested yet -- reports are welcome:
+  https://github.com/balazs-katona/auto-chapter/issues
 - [uv](https://docs.astral.sh/uv/) -- it also provides Python 3.13+ if your
   system has none
 - ffmpeg, ffprobe (FFmpeg 4.4 or newer: the detection needs the `blackdetect` and `scdet` filters;
@@ -141,3 +143,13 @@ uv run pytest                  # run tests
 uv run ruff check src tests    # lint
 uv run mypy src                # type check
 ```
+
+## License
+
+Copyright (C) 2026 Balazs Katona
+
+auto-chapter is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. It comes with **no warranty**. See [LICENSE](LICENSE) for the full
+text.

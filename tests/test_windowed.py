@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Balazs Katona
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Tests for the windowed detection: what happens when ffmpeg cannot read a window.
 
 Before 0.2.24 a failed ffmpeg run (exit code != 0, e.g. an I/O error on a

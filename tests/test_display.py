@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Balazs Katona
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Tests for the chapter preview: the words must say what the numbers really are.
 
 The table's last column used to be "Confidence" -- but the number is ffmpeg

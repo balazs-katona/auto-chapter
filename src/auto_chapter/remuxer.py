@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Balazs Katona
+# SPDX-License-Identifier: GPL-3.0-or-later
 """mkvmerge wrapper: writes chapters and remuxes the container atomically.
 
 Single-step approach:

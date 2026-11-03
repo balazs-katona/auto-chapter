@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Balazs Katona
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Tests for sleep_inhibit: the idle-sleep lock held while work runs.
 
 Everything is best effort: when the lock cannot be taken, the work still runs.

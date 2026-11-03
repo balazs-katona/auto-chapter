@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Balazs Katona
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Tests for ffmpeg_decoder_problem: most movies are H.264 or HEVC, and some
 ffmpeg builds (Fedora's ffmpeg-free) can't decode them -- every detection
 would fail."""

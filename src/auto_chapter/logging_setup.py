@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Balazs Katona
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Structured logging setup.
 
 Structured events (log.info/warning/error) are diagnostic detail meant for

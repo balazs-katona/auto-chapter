@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Balazs Katona
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Tests for _cleanup_stale_tmp: leftover .autochapter.tmp removal.
 
 These files can only be left behind if a previous run was killed mid-write

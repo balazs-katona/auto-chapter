@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Balazs Katona
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Windowed scene detection orchestrator.
 
 For each 5-min window, runs blackdetect + scdet simultaneously.

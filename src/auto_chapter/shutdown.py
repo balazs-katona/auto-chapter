@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Balazs Katona
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Shutdown scheduler: 's' key toggle during batch + power off after success.
 
 Listens to stdin for 's' keypresses while a batch runs. The user can toggle

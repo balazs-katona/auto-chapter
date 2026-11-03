@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Balazs Katona
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Interactive numbered menu for users who prefer not to type commands."""
 
 import contextlib
@@ -1844,7 +1846,7 @@ def _about_flow(config: Config) -> None:
             f"on a Plex server.[/dim]\n"
             f"\n"
             f"[bold]Log file:[/bold]  {log_path if log_path else '(file logging disabled)'}\n"
-            f"[bold]GitHub:[/bold]    https://github.com/PLACEHOLDER/auto-chapter\n"
+            f"[bold]GitHub:[/bold]    https://github.com/balazs-katona/auto-chapter\n"
             f"[bold]License:[/bold]   GPL-3.0-or-later (no warranty, see LICENSE)\n"
             f"\n"
             f"[dim]Found a bug or have a feature request? Open an issue there.[/dim]",
