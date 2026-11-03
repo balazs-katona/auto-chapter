@@ -883,16 +883,18 @@ def test_find_by_title_nothing_written_goes_back_to_the_title_prompt(
     assert len(find_flow.asked) == 2
 
 
-def test_find_by_title_after_a_write_it_returns_to_the_main_menu(
+def test_find_by_title_after_a_write_it_asks_for_the_next_title(
     find_flow: SimpleNamespace, prompt: SimpleNamespace
 ) -> None:
+    """Like Generate and Update, which stay on their own screen after work:
+    whoever searches by title often wants the next movie. It used to leave
+    for the main menu."""
     find_flow.found = [_movie("Heat", True, year=1995)]
-    find_flow.titles = ["Heat"]  # a second title prompt would run out of answers
     prompt.answers = [1]
 
     menu._find_by_title(find_flow.orch)
 
-    assert len(find_flow.asked) == 1
+    assert len(find_flow.asked) == 2  # the title prompt again ("" there leaves)
     assert [mv.title for mv in find_flow.processed] == ["Heat"]
 
 
@@ -1227,7 +1229,7 @@ def test_toggle_switches_a_mapping_off_and_on_and_saves_each_time(
     prompt: SimpleNamespace,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    prompt.answers = [3, 1, 3, 1, 0]
+    prompt.answers = [3, 1, 1, 0, 0]  # 3, switch 1 twice in the list, back, back
 
     menu._folder_mappings(mapping_flow.config, mapping_flow.orch)
 
@@ -1241,7 +1243,7 @@ def test_toggle_switches_a_mapping_off_and_on_and_saves_each_time(
 def test_toggle_enables_a_disabled_mapping(
     mapping_flow: SimpleNamespace, prompt: SimpleNamespace
 ) -> None:
-    prompt.answers = [2]  # the disabled one
+    prompt.answers = [2, 0]  # the disabled one, then back
 
     menu._toggle_folder_mapping(mapping_flow.config)
 
@@ -1374,7 +1376,7 @@ def test_when_plex_cannot_be_asked_the_user_is_told_and_the_list_still_shows(
 def test_plex_is_asked_once_when_the_screen_opens_not_on_every_render(
     mapping_flow: SimpleNamespace, prompt: SimpleNamespace
 ) -> None:
-    prompt.answers = [3, 1, 3, 1, 0]  # toggle the first mapping twice, then back
+    prompt.answers = [3, 1, 0, 3, 1, 0, 0]  # toggle, back to the screen, toggle, back, back
 
     menu._folder_mappings(mapping_flow.config, mapping_flow.orch)
 
@@ -1916,3 +1918,68 @@ def test_an_unreachable_folder_says_where_to_fix_a_wrong_path(
     menu._check_folder_reachability(SimpleNamespace(paths=mappings))
 
     assert FIX_HINT in " ".join(capsys.readouterr().out.split())  # a long line may wrap
+
+
+def test_toggle_stays_in_its_list_until_back(
+    mapping_flow: SimpleNamespace, prompt: SimpleNamespace, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A switch used to jump back to the mappings screen (and its folder
+    check) every time; now it works like a switch: the list is shown again
+    with the new state until 0."""
+    prompt.answers = [1, 2, 0]
+
+    menu._toggle_folder_mapping(mapping_flow.config)
+
+    assert [m.enabled for m in mapping_flow.config.paths] == [False, True]
+    assert len(mapping_flow.saved) == 2
+    assert capsys.readouterr().out.count("Enable or disable a mapping") == 3
+
+
+# --- Ctrl+C during a wait in Settings goes back one step ----------------------
+#
+# The folder check, asking Plex for its folders and testing a URL or token can
+# take seconds; Ctrl+C there used to jump to the main menu.
+
+
+def _raise_ctrl_c(*_args: object) -> None:
+    raise KeyboardInterrupt
+
+
+def test_ctrl_c_in_a_mapping_action_goes_back_to_the_mappings_screen(
+    mapping_flow: SimpleNamespace,
+    prompt: SimpleNamespace,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(menu, "_add_folder_mapping", _raise_ctrl_c)
+    prompt.answers = [1, 0]  # Add (interrupted), then Back
+
+    menu._folder_mappings(mapping_flow.config, mapping_flow.orch)
+
+    assert len(prompt.asked) == 2  # the mappings screen was shown again
+    assert "Cancelled." in capsys.readouterr().out
+
+
+def test_ctrl_c_in_a_settings_screen_goes_back_to_settings(
+    prompt: SimpleNamespace, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(menu, "_folder_mappings", _raise_ctrl_c)
+    prompt.answers = [1, 0]  # Folder mappings (interrupted while checking), then Back
+
+    menu._settings_flow(SimpleNamespace(), SimpleNamespace())
+
+    assert len(prompt.asked) == 2  # Settings was shown again
+    assert "Cancelled." in capsys.readouterr().out
+
+
+def test_ctrl_c_while_testing_a_plex_address_goes_back_to_plex_connection(
+    prompt: SimpleNamespace, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(menu, "_change_plex_url", _raise_ctrl_c)
+    prompt.answers = [1, 0]  # Change URL (interrupted while testing), then Back
+    config = SimpleNamespace(plex=SimpleNamespace(url="http://plex:32400", token="abcdefgh"))
+
+    menu._plex_connection(config, SimpleNamespace())
+
+    assert len(prompt.asked) == 2  # the Plex connection screen was shown again
+    assert "Cancelled." in capsys.readouterr().out

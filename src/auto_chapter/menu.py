@@ -1108,10 +1108,11 @@ def _find_by_title(orch: Orchestrator) -> None:
             if choice == 0:
                 continue  # cancel -- back to the title prompt
 
-        if _detect_and_confirm_write(movie, orch):
-            return  # written -- done, back to main menu
-        # Not written (cancelled at "What now?", detection failed, or stopped):
-        # back to the title prompt, where 0 leaves for the main menu.
+        _detect_and_confirm_write(movie, orch)
+        # Written or not (cancelled at "What now?", detection failed, stopped):
+        # back to the title prompt for the next movie, where 0 leaves for the
+        # main menu -- like Generate and Update, which stay on their own screen
+        # after work. (Until 0.4.4 a write left for the main menu.)
 
 
 # --- Settings ---
@@ -1370,30 +1371,39 @@ def _folder_mappings(config: Config, orch: Orchestrator) -> None:
 
         if choice == 0:
             return
-        if choice == _MAP_ADD:
-            fresh = _add_folder_mapping(config, orch)
-            if fresh is not None:
-                # Add just asked Plex; use that list so a folder new in Plex
-                # is not flagged "not found" merely because it is newer than
-                # the copy taken when the screen opened.
-                plex_folders, plex_problem = fresh, ""
-        elif choice == _MAP_CHANGE:
-            _change_folder_mapping(config)
-        elif choice == _MAP_TOGGLE:
-            _toggle_folder_mapping(config)
-        elif choice == _MAP_REMOVE:
-            _remove_folder_mapping(config)
+        try:
+            if choice == _MAP_ADD:
+                fresh = _add_folder_mapping(config, orch)
+                if fresh is not None:
+                    # Add just asked Plex; use that list so a folder new in Plex
+                    # is not flagged "not found" merely because it is newer than
+                    # the copy taken when the screen opened.
+                    plex_folders, plex_problem = fresh, ""
+            elif choice == _MAP_CHANGE:
+                _change_folder_mapping(config)
+            elif choice == _MAP_TOGGLE:
+                _toggle_folder_mapping(config)
+            elif choice == _MAP_REMOVE:
+                _remove_folder_mapping(config)
+        except (KeyboardInterrupt, EOFError):
+            _cancelled()  # Ctrl+C while asking Plex or checking a path: one step back
 
 
 def _toggle_folder_mapping(config: Config) -> None:
-    """Switch a mapping between active and disabled (saved at once)."""
-    m = _pick_mapping(config, "Enable or disable a mapping")
-    if m is None:
-        return
-    m.enabled = not m.enabled
-    _save_config_to_disk(config)
-    state = "enabled" if m.enabled else "disabled"
-    console.print(f"[green]OK[/green] {escape(m.local)} -> {escape(m.plex)} {state}.")
+    """Switch mappings between active and disabled, each saved at once.
+
+    Works like a switch: after each change the list is shown again with the
+    new state, until 0 (Back). Until 0.4.4 every switch jumped back to the
+    mappings screen and its folder check.
+    """
+    while True:
+        m = _pick_mapping(config, "Enable or disable a mapping")
+        if m is None:
+            return
+        m.enabled = not m.enabled
+        _save_config_to_disk(config)
+        state = "enabled" if m.enabled else "disabled"
+        console.print(f"[green]OK[/green] {escape(m.local)} -> {escape(m.plex)} {state}.")
 
 
 def _remove_folder_mapping(config: Config) -> None:
@@ -1625,28 +1635,36 @@ def _plex_connection(config: Config, orch: Orchestrator) -> None:
 
         if choice == 0:
             return
-        if choice == 1:
-            _change_plex_url(config, orch)
-        elif choice == 2:
-            _change_plex_token(config, orch)
-        elif choice == 3:
-            # reconnect() is also what backs "test connection" in effect --
-            # unlike the old standalone Test option (a throwaway probe
-            # using its own fresh PlexServer, never touching orch.plex),
-            # this actually updates orch.plex's live connection state, so
-            # there's no reason to keep both: checking AND fixing in one
-            # action is strictly more useful than checking alone. Prints
-            # its own "Connecting to Plex..." -- no need to print anything
-            # before calling it.
-            if orch.plex.reconnect():
-                console.print(
-                    f"[green]OK[/green] Connected to {orch.plex.server_name}."
-                )
-            else:
-                console.print(
-                    f"[red]Still not connected:[/red] "
-                    f"{orch.plex.connection_error or 'unknown error'}"
-                )
+        try:
+            _plex_connection_action(choice, config, orch)
+        except (KeyboardInterrupt, EOFError):
+            _cancelled()  # Ctrl+C while a URL / token is tested: one step back
+
+
+def _plex_connection_action(choice: int, config: Config, orch: Orchestrator) -> None:
+    """One choice of the Plex connection screen."""
+    if choice == 1:
+        _change_plex_url(config, orch)
+    elif choice == 2:
+        _change_plex_token(config, orch)
+    elif choice == 3:
+        # reconnect() is also what backs "test connection" in effect --
+        # unlike the old standalone Test option (a throwaway probe
+        # using its own fresh PlexServer, never touching orch.plex),
+        # this actually updates orch.plex's live connection state, so
+        # there's no reason to keep both: checking AND fixing in one
+        # action is strictly more useful than checking alone. Prints
+        # its own "Connecting to Plex..." -- no need to print anything
+        # before calling it.
+        if orch.plex.reconnect():
+            console.print(
+                f"[green]OK[/green] Connected to {orch.plex.server_name}."
+            )
+        else:
+            console.print(
+                f"[red]Still not connected:[/red] "
+                f"{orch.plex.connection_error or 'unknown error'}"
+            )
 
 
 def _change_plex_url(config: Config, orch: Orchestrator) -> None:
@@ -1702,6 +1720,11 @@ def _change_plex_token(config: Config, orch: Orchestrator) -> None:
     console.print("[green]OK[/green] Connection succeeded. New token saved.")
 
 
+def _cancelled() -> None:
+    """Ctrl+C during a wait in Settings: one step back, said once (0.4.4)."""
+    console.print("\n[yellow]Cancelled.[/yellow]")
+
+
 def _settings_flow(orch: Orchestrator, config: Config) -> None:
     """Top-level Settings menu."""
     while True:
@@ -1718,14 +1741,19 @@ def _settings_flow(orch: Orchestrator, config: Config) -> None:
         )
         if choice == 0:
             return
-        if choice == 1:
-            _folder_mappings(config, orch)
-        elif choice == 2:
-            _min_movie_length(config)
-        elif choice == 3:
-            _chapter_threshold(config)
-        elif choice == 4:
-            _plex_connection(config, orch)
+        try:
+            if choice == 1:
+                _folder_mappings(config, orch)
+            elif choice == 2:
+                _min_movie_length(config)
+            elif choice == 3:
+                _chapter_threshold(config)
+            elif choice == 4:
+                _plex_connection(config, orch)
+        except (KeyboardInterrupt, EOFError):
+            # Ctrl+C while a screen asks Plex or checks the folders (that can
+            # take seconds on a hung NAS): back to Settings, not the main menu.
+            _cancelled()
 
 
 def _about_flow(config: Config) -> None:
