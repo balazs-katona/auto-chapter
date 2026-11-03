@@ -544,17 +544,42 @@ PYEOF
     mapfile -t plex_folders <<< "$plex_folders_raw"
     folder_count=${#plex_folders[@]}
 
-    # Ask once: same machine or different
-    echo
-    echo "Where is Plex running?"
-    echo "  1) On this machine"
-    echo "  2) On another machine"
+    # Ask once: same machine or different. "On this machine" maps every folder
+    # to itself; if not one of them is here, that answer was probably a slip
+    # (1.0.0 final test), so offer the question again.
     while true; do
-        ask "Choose [1/2]: " same_machine
-        if [ "$same_machine" = "1" ] || [ "$same_machine" = "2" ]; then
-            break
-        fi
-        echo "Please type 1 or 2."
+        echo
+        echo "Where is Plex running?"
+        echo "  1) On this machine"
+        echo "  2) On another machine"
+        while true; do
+            ask "Choose [1/2]: " same_machine
+            if [ "$same_machine" = "1" ] || [ "$same_machine" = "2" ]; then
+                break
+            fi
+            echo "Please type 1 or 2."
+        done
+        [ "$same_machine" = "1" ] || break
+
+        found_here=0
+        for p_path in "${plex_folders[@]}"; do
+            [ -d "$p_path" ] && found_here=1
+        done
+        [ "$found_here" = "1" ] && break
+
+        echo
+        warn "None of Plex's folders are on this computer, so Plex probably runs on"
+        warn "another machine."
+        echo "  1) Go back and choose \"On another machine\""
+        echo "  2) Keep them anyway"
+        while true; do
+            ask "Choose [1/2]: " go_back
+            if [ "$go_back" = "1" ] || [ "$go_back" = "2" ]; then
+                break
+            fi
+            echo "Please type 1 or 2."
+        done
+        [ "$go_back" = "1" ] || break
     done
 
     # Show what was found

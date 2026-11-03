@@ -329,3 +329,65 @@ def test_installer_uses_a_local_folders_address_as_its_path() -> None:
 
     assert "network address" not in out
     assert "path=[/home/user/Árvácska filmek]" in out
+
+
+# --- "On this machine" when none of Plex's folders are here --------------------
+#
+# 1.0.0 final test: "On this machine" chosen by mistake mapped every folder to
+# a path that doesn't exist here, said "OK All 2 folder(s) mapped" and offered
+# no way back.
+
+
+def _where_is_plex(folders: list[str], answers: str) -> str:
+    """Run the "Where is Plex running?" part of install.sh with these Plex folders."""
+    text = INSTALL_SH.read_text(encoding="utf-8")
+    start = text.index("    # Ask once: same machine or different.")
+    end = text.index("    # Show what was found", start)
+    helpers = "\n".join(m.group(0) for m in re.finditer(r"^(ok|warn)\(\).*$", text, re.MULTILINE))
+    quoted = " ".join(f'"{f}"' for f in folders)
+    script = (
+        f"{helpers}\n{_bash_function('ask')}\nplex_folders=({quoted})\n"
+        f'{text[start:end]}\necho "answer=[$same_machine]"\n'
+    )
+    done = subprocess.run(
+        ["bash", "-c", script], input=answers, capture_output=True, text=True, timeout=10, check=False
+    )
+    return done.stdout
+
+
+NOT_HERE = "None of Plex's folders are on this computer"
+
+
+def test_none_of_the_folders_here_offers_the_question_again(tmp_path: Path) -> None:
+    out = _where_is_plex([str(tmp_path / "nas" / "Filmek")], "1\n1\n2\n")
+
+    assert NOT_HERE in out
+    assert '1) Go back and choose "On another machine"' in out
+    assert "2) Keep them anyway" in out
+    assert out.count("Where is Plex running?") == 2
+    assert "answer=[2]" in out
+
+
+def test_none_of_the_folders_here_can_still_be_kept(tmp_path: Path) -> None:
+    out = _where_is_plex([str(tmp_path / "nas" / "Filmek")], "1\n2\n")
+
+    assert NOT_HERE in out
+    assert out.count("Where is Plex running?") == 1
+    assert "answer=[1]" in out
+
+
+def test_a_folder_that_is_here_asks_nothing_more(tmp_path: Path) -> None:
+    """Plex really runs here: one existing folder is enough, no extra question."""
+    (tmp_path / "Filmek").mkdir()
+
+    out = _where_is_plex([str(tmp_path / "Filmek"), str(tmp_path / "gone")], "1\n")
+
+    assert NOT_HERE not in out
+    assert "answer=[1]" in out
+
+
+def test_another_machine_is_not_checked(tmp_path: Path) -> None:
+    out = _where_is_plex([str(tmp_path / "nas" / "Filmek")], "2\n")
+
+    assert NOT_HERE not in out
+    assert "answer=[2]" in out
