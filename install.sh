@@ -328,6 +328,40 @@ movies_are_here() {
     done
 }
 
+# Is ~/.local/bin (where the auto-chapter command goes) on the user's PATH?
+# Prints one word:
+#   ok           -- it is
+#   new_terminal -- the shell's config file already adds it (uv's own
+#                   installer writes such a line): a new terminal will have it
+#   added        -- not yet, so this function added it to the shell's config
+#                   file (1.0.0 final test: EndeavourOS doesn't have it by
+#                   default, and "add this line to your shell config" was
+#                   too much to ask of a user)
+#   manual       -- unknown shell, or the file can't be written: say how
+ensure_bin_on_path() {
+    local user_path="$1" shell_rc="$2" line
+    case ":$user_path:" in
+        *":$HOME/.local/bin:"*) echo ok; return ;;
+    esac
+    if [ -z "$shell_rc" ]; then
+        echo manual
+        return
+    fi
+    if grep -qs '\.local/bin' "$shell_rc"; then
+        echo new_terminal
+        return
+    fi
+    line='export PATH="$HOME/.local/bin:$PATH"'
+    [[ "$shell_rc" == *fish* ]] && line='set -gx PATH $HOME/.local/bin $PATH'
+    if mkdir -p "$(dirname "$shell_rc")" 2>/dev/null \
+        && printf '\n# Added by the auto-chapter installer, so the terminal finds the auto-chapter command\n%s\n' \
+            "$line" >> "$shell_rc" 2>/dev/null; then
+        echo added
+    else
+        echo manual
+    fi
+}
+
 need_config=true
 if [ -f "$CONF_FILE" ] && [ -f "$ENV_FILE" ]; then
     token_in_env=$(grep -E '^PLEX_TOKEN=' "$ENV_FILE" 2>/dev/null | cut -d= -f2)
@@ -813,26 +847,16 @@ if [ -n "$SHELL_RC" ] && [ -f "$SHELL_RC" ]; then
     fi
 fi
 
-# Is ~/.local/bin on the user's PATH? If not, but the shell's config file adds
-# it (uv's own installer writes such a line), a new terminal will have it.
-# Otherwise we tell the user how to fix it.
-NEEDS_PATH_HELP=false
-NEEDS_NEW_TERMINAL=false
-case ":$USER_PATH:" in
-    *":$HOME/.local/bin:"*) : ;;
-    *)
-        if [ -n "$SHELL_RC" ] && grep -qs '\.local/bin' "$SHELL_RC"; then
-            NEEDS_NEW_TERMINAL=true
-        else
-            NEEDS_PATH_HELP=true
-        fi
-        ;;
-esac
+# Judged by the user's own PATH (USER_PATH), not this script's.
+path_status=$(ensure_bin_on_path "$USER_PATH" "$SHELL_RC")
 
 step "Installation complete! (v$VERSION)"
 echo
 
-if [ "$NEEDS_PATH_HELP" = "true" ]; then
+if [ "$path_status" = "added" ]; then
+    ok "Added $HOME/.local/bin to your PATH in $SHELL_RC"
+fi
+if [ "$path_status" = "manual" ]; then
     warn "$HOME/.local/bin is not on your PATH yet."
     echo
     echo "Add this line to your shell config to fix that:"
@@ -845,7 +869,7 @@ if [ "$NEEDS_PATH_HELP" = "true" ]; then
     echo
     echo "Until then you can also run it with the full path:"
     echo -e "  ${DIM}$BIN_LINK${NC}"
-elif [ "$NEEDS_NEW_TERMINAL" = "true" ]; then
+elif [ "$path_status" = "new_terminal" ] || [ "$path_status" = "added" ]; then
     echo -e "To start auto-chapter, open a new terminal and type:  ${GREEN}${BOLD}auto-chapter${NC}"
     echo -e "${DIM}(this terminal doesn't know the command yet)${NC}"
 else

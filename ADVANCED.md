@@ -118,3 +118,9 @@ only by you):
 In the app folder:
 - `auto-chapter` -- the launcher (`~/.local/bin/auto-chapter` points to it)
 - `.venv/` -- the Python environment (managed by uv)
+
+If `~/.local/bin` isn't on your PATH yet, the installer adds one line to your
+shell's settings file (`~/.bashrc`, `~/.zshrc` or fish's `config.fish`), with
+a comment above it saying it came from the auto-chapter installer, so a new
+terminal finds the `auto-chapter` command. When you remove auto-chapter, you
+can delete those two lines too.

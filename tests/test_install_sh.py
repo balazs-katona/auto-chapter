@@ -287,8 +287,7 @@ def test_the_path_message_uses_the_users_own_path() -> None:
     first_export = next(i for i, line in enumerate(lines) if line.startswith("export PATH="))
 
     assert saved < first_export
-    assert 'case ":$USER_PATH:" in' in lines
-    assert 'case ":$PATH:" in' not in lines
+    assert 'path_status=$(ensure_bin_on_path "$USER_PATH" "$SHELL_RC")' in lines
 
 
 # --- An address typed instead of a folder path --------------------------------
@@ -391,3 +390,77 @@ def test_another_machine_is_not_checked(tmp_path: Path) -> None:
 
     assert NOT_HERE not in out
     assert "answer=[2]" in out
+
+
+# --- ~/.local/bin is put on PATH by the installer itself --------------------
+#
+# 1.0.0 final test on EndeavourOS: ~/.local/bin isn't on PATH there, so the
+# command wasn't found in a new terminal, and "add this line to your shell
+# config" was too much to ask. The owner: handle it automatically.
+
+
+def _ensure_on_path(home: Path, user_path: str, shell_rc: str) -> str:
+    script = (
+        f'{_bash_function("ensure_bin_on_path")}\n'
+        f'HOME="{home}"\nensure_bin_on_path "{user_path}" "{shell_rc}"\n'
+    )
+    done = subprocess.run(["bash", "-c", script], capture_output=True, text=True, check=False)
+    return done.stdout.strip()
+
+
+def test_already_on_path_changes_nothing(tmp_path: Path) -> None:
+    rc = tmp_path / ".bashrc"
+
+    status = _ensure_on_path(tmp_path, f"/usr/bin:{tmp_path}/.local/bin", str(rc))
+
+    assert status == "ok"
+    assert not rc.exists()
+
+
+def test_not_on_path_is_added_to_the_shell_config(tmp_path: Path) -> None:
+    rc = tmp_path / ".bashrc"
+    rc.write_text("alias ll='ls -l'\n", encoding="utf-8")
+
+    status = _ensure_on_path(tmp_path, "/usr/bin", str(rc))
+
+    assert status == "added"
+    text = rc.read_text(encoding="utf-8")
+    assert text.startswith("alias ll='ls -l'\n")  # the user's own lines stay
+    assert 'export PATH="$HOME/.local/bin:$PATH"' in text
+    assert "auto-chapter installer" in text  # says who wrote it
+
+
+def test_the_line_is_added_only_once(tmp_path: Path) -> None:
+    """A second install (an update) finds the line and adds nothing."""
+    rc = tmp_path / ".bashrc"
+
+    assert _ensure_on_path(tmp_path, "/usr/bin", str(rc)) == "added"
+    assert _ensure_on_path(tmp_path, "/usr/bin", str(rc)) == "new_terminal"
+    assert rc.read_text(encoding="utf-8").count(".local/bin") == 1
+
+
+def test_a_line_written_by_uvs_installer_counts(tmp_path: Path) -> None:
+    rc = tmp_path / ".bashrc"
+    rc.write_text('. "$HOME/.local/bin/env"\n', encoding="utf-8")
+
+    assert _ensure_on_path(tmp_path, "/usr/bin", str(rc)) == "new_terminal"
+    assert rc.read_text(encoding="utf-8") == '. "$HOME/.local/bin/env"\n'
+
+
+def test_fish_gets_its_own_line_and_folder(tmp_path: Path) -> None:
+    rc = tmp_path / ".config" / "fish" / "config.fish"  # folder not there yet
+
+    assert _ensure_on_path(tmp_path, "/usr/bin", str(rc)) == "added"
+    assert "set -gx PATH $HOME/.local/bin $PATH" in rc.read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("case", ["unknown shell", "file can't be written"])
+def test_otherwise_the_user_is_told_how(tmp_path: Path, case: str) -> None:
+    if case == "unknown shell":
+        shell_rc = ""
+    else:
+        (tmp_path / "ro").mkdir()
+        (tmp_path / "ro").chmod(0o500)
+        shell_rc = str(tmp_path / "ro" / ".bashrc")
+
+    assert _ensure_on_path(tmp_path, "/usr/bin", shell_rc) == "manual"
