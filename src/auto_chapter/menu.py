@@ -1,11 +1,13 @@
 """Interactive numbered menu for users who prefer not to type commands."""
 
 import contextlib
+import re
 import textwrap
 from collections.abc import Iterator
 from functools import partial
 from pathlib import Path
 from typing import Any
+from urllib.parse import unquote, urlsplit
 
 from rich.markup import escape
 from rich.panel import Panel
@@ -737,6 +739,19 @@ _WRONG_PATH_HINT = (
 )
 
 
+def _print_missing_files(count: int, need: str) -> None:
+    """Movies that need work but whose files weren't found where the mapping
+    points. Said instead of "nothing to do": the 0.4.4 Ubuntu test (Plex's
+    folder mapped to another folder) printed "Missing files: 10" and "All
+    movies have Auto Chapters" together."""
+    if count == 1:
+        text = f"1 movie needs {need}, but its file wasn't found."
+    else:
+        text = f"{count} movies need {need}, but their files weren't found."
+    console.print(f"\n[yellow]{text}[/yellow]")
+    console.print(_WRONG_PATH_HINT)
+
+
 def _check_folder_reachability(config: Config) -> tuple[bool, list[str]]:
     """Check enabled mapped folders are reachable before scanning.
 
@@ -847,6 +862,8 @@ def _generate_auto_chapters_flow(orch: Orchestrator, config: Config) -> None:
                     "\n[yellow]No movies found.[/yellow] "
                     "Add a folder mapping in Settings."
                 )
+            elif stats.missing_files:
+                _print_missing_files(stats.missing_files, "Auto Chapters")
             else:
                 console.print("\n[green]All movies have Auto Chapters. Nothing to do here.[/green]")
             return
@@ -931,14 +948,17 @@ def _update_end_credits_flow(orch: Orchestrator, config: Config) -> None:
                     "\n[yellow]No movies found.[/yellow] "
                     "Add a folder mapping in Settings."
                 )
-            elif processed_so_far > 0:
-                console.print(
-                    "\n[green]Done. All movies have been updated with the End Credits chapter.[/green]"
-                )
             else:
-                console.print(
-                    "\n[green]No movies need an End Credits update right now.[/green]"
-                )
+                if processed_so_far > 0:
+                    console.print(
+                        "\n[green]Done. All movies have been updated with the End Credits chapter.[/green]"
+                    )
+                if stats.missing_files:
+                    _print_missing_files(stats.missing_files, "an End Credits update")
+                elif processed_so_far == 0:
+                    console.print(
+                        "\n[green]No movies need an End Credits update right now.[/green]"
+                    )
             return
 
         choice = _show_options(
@@ -1497,6 +1517,20 @@ def _movies_are_here(orch: Orchestrator, plex_path: str, path: str) -> bool:
     return choice == 2
 
 
+# "smb://...", "nfs://...", "file://...": what a file manager shows in its
+# address bar, copied instead of a folder path (0.4.4 Ubuntu test).
+_ADDRESS = re.compile(r"^([A-Za-z][A-Za-z0-9+.-]*)://")
+
+
+def _network_address_text(scheme: str) -> str:
+    return (
+        f"[yellow]That's a network address ({escape(scheme)}://...), not a folder path.[/yellow]\n"
+        "auto-chapter reads and writes the movie files directly, so the share has to be\n"
+        "mounted as a folder on this computer first. How to do that: INSTALL.md,\n"
+        '"Mounting a network share".'
+    )
+
+
 def _ask_one_path() -> str | None:
     """The folder path the user types (~ expanded, final "/"), or None for 0."""
     while True:
@@ -1506,6 +1540,13 @@ def _ask_one_path() -> str | None:
         )
         if not path:
             return None
+        address = _ADDRESS.match(path)
+        if address and address.group(1).lower() == "file":
+            # A local folder's address: the same folder, so just use its path.
+            path = unquote(urlsplit(path).path)
+        elif address:
+            console.print(_network_address_text(address.group(1)))
+            continue
         # Expand ~ to user home
         path = str(Path(path).expanduser())
         # Absolute path check

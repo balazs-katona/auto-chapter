@@ -287,3 +287,43 @@ def test_the_path_message_uses_the_users_own_path() -> None:
     assert saved < first_export
     assert 'case ":$USER_PATH:" in' in lines
     assert 'case ":$PATH:" in' not in lines
+
+
+# --- An address typed instead of a folder path --------------------------------
+
+
+def _path_question(answers: str) -> str:
+    """The installer's text for these answers to the mounted-path question:
+    the path loop cut out of install.sh and run on its own."""
+    text = INSTALL_SH.read_text(encoding="utf-8")
+    start = text.index('                    ask "  Where is this folder mounted on this computer?')
+    end = text.index('                    [[ "$l_path" != */ ]] && l_path="${l_path}/"', start)
+    loop = text[start:end]
+    script = (
+        "\n".join(m.group(0) for m in re.finditer(r"^(ok|warn)\(\).*$", text, re.MULTILINE))
+        + f"\n{_bash_function('ask')}\n"
+        + 'trim() { echo "$1"; }\n'
+        + f"while true; do\n{loop}\n"
+        + 'echo "path=[$l_path]"; break\ndone\n'
+    )
+    done = subprocess.run(
+        ["bash", "-c", script], input=answers, capture_output=True, text=True, timeout=10, check=False
+    )
+    return done.stdout
+
+
+def test_installer_says_a_network_address_has_to_be_mounted() -> None:
+    out = _path_question("smb://nas.local/media/Filmek\n/mnt/nas/Filmek\n")
+
+    assert "That's a network address (smb://...), not a folder path." in out
+    assert "mounted as a folder on this computer first" in out
+    assert '"Mounting a network share"' in out
+    assert "doesn't look like a folder path" not in out
+    assert "path=[/mnt/nas/Filmek]" in out  # asked again
+
+
+def test_installer_uses_a_local_folders_address_as_its_path() -> None:
+    out = _path_question("file:///home/user/%C3%81rv%C3%A1cska%20filmek\n")
+
+    assert "network address" not in out
+    assert "path=[/home/user/Árvácska filmek]" in out

@@ -102,6 +102,45 @@ in Settings → Folder mappings, which also tells you which Plex folders still
 have no mapping. Adding or changing a mapping there also shows how many of
 Plex's movies are in the folder you typed.
 
+#### Mounting a network share
+
+If your movies are on a NAS, auto-chapter needs them as a normal folder on
+this computer, because it reads and writes the movie files directly. The
+address a file manager shows for a share (`smb://nas.local/Multimedia`) is
+not a folder path, so mount the share first. One way that lasts across
+restarts, for an SMB (Windows/Samba) share:
+
+1. Install the SMB mount tools: the package is called `cifs-utils` on
+   Arch, Debian/Ubuntu, Fedora and openSUSE.
+2. Make an empty folder for it: `sudo mkdir -p /mnt/nas`
+3. Put the NAS login into a file only you can read, `~/.smbcredentials`:
+   ```
+   username=YOUR-NAS-USER
+   password=YOUR-NAS-PASSWORD
+   ```
+   then: `chmod 600 ~/.smbcredentials`
+4. Add one line to `/etc/fstab` (`sudo nano /etc/fstab`; replace the NAS
+   name, the share and `you` with your own; `id -u` and `id -g` show your
+   two numbers if they aren't 1000):
+   ```
+   //nas.local/Multimedia  /mnt/nas  cifs  credentials=/home/you/.smbcredentials,uid=1000,gid=1000,iocharset=utf8,_netdev,nofail  0  0
+   ```
+   `uid`/`gid` make the files yours, so auto-chapter can write them;
+   `nofail` lets the computer start even when the NAS is off.
+5. Mount it: `sudo systemctl daemon-reload && sudo mount /mnt/nas`
+
+The folder path is now under `/mnt/nas/` -- for example
+`/mnt/nas/Movies/`. That is what you type when the installer, or Settings →
+Folder mappings, asks where the folder is mounted on this computer.
+
+For an NFS share, steps 3 and 4 are simpler -- no login file, and this
+line in `/etc/fstab`:
+```
+nas.local:/share/Multimedia  /mnt/nas  nfs  _netdev,nofail  0  0
+```
+The package for it is `nfs-utils` (Debian/Ubuntu: `nfs-common`, openSUSE:
+`nfs-client`).
+
 #### How to find your Plex token
 
 1. Open the Plex web app and go to any movie's info page

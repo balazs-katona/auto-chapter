@@ -610,6 +610,20 @@ PYEOF
                         no_path=1
                         break
                     fi
+                    # An address copied from a file manager's address bar (as the app does)
+                    if [[ "$l_path" =~ ^([A-Za-z][A-Za-z0-9+.-]*):// ]]; then
+                        scheme="${BASH_REMATCH[1]}"
+                        if [ "${scheme,,}" = "file" ]; then
+                            # A local folder's address: the same folder, so just use its path.
+                            l_path=$(python3 -c 'import sys, urllib.parse as u; print(u.unquote(u.urlsplit(sys.argv[1]).path))' "$l_path")
+                        else
+                            warn "  That's a network address ($scheme://...), not a folder path."
+                            echo "  auto-chapter reads and writes the movie files directly, so the share has to be"
+                            echo "  mounted as a folder on this computer first. How to do that: INSTALL.md,"
+                            echo "  \"Mounting a network share\"."
+                            continue
+                        fi
+                    fi
                     # Expand ~ to user home
                     l_path="${l_path/#\~/$HOME}"
                     # Absolute path check -- must start with /

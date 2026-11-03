@@ -2107,3 +2107,118 @@ def test_an_unreachable_folder_is_not_compared(
 
     assert mapping_flow.compared == []
     assert mapping_flow.config.paths[-1].local == "/mnt/not-mounted/Uj/"
+
+
+# --- Movies that need work but whose files weren't found ---------------------
+#
+# 0.4.4 Ubuntu test: "Missing files: 10" and "All movies have Auto Chapters.
+# Nothing to do here." on the same screen.
+
+
+def _flow_with_stats(**counts: int) -> SimpleNamespace:
+    return SimpleNamespace(
+        config=SimpleNamespace(
+            paths=[SimpleNamespace(enabled=True)],
+            detection=SimpleNamespace(chapter_threshold=4, min_duration_seconds=0),
+        ),
+        plex=SimpleNamespace(
+            server_name="TEST",
+            iter_movie_candidates=lambda **_k: ([], ScanStats(**counts)),
+            iter_credits_update_candidates=lambda **_k: ([], CreditsScanStats(**counts)),
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    ("flow_name", "need", "all_done"),
+    [
+        ("_generate_auto_chapters_flow", "Auto Chapters", "All movies have Auto Chapters"),
+        ("_update_end_credits_flow", "an End Credits update", "No movies need an End Credits"),
+    ],
+)
+def test_missing_files_are_said_instead_of_nothing_to_do(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    flow_name: str,
+    need: str,
+    all_done: str,
+) -> None:
+    orch = _flow_with_stats(total_movies=1322, missing_files=10)
+    monkeypatch.setattr(menu, "_check_folder_reachability", lambda _cfg: (True, []))
+
+    getattr(menu, flow_name)(orch, orch.config)
+
+    out = " ".join(capsys.readouterr().out.split())
+    assert f"10 movies need {need}, but their files weren't found." in out
+    assert "Settings → Folder mappings → 2) Change a mapping's local or mounted path" in out
+    assert all_done not in out
+
+
+def test_one_missing_file_is_said_in_the_singular(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    orch = _flow_with_stats(total_movies=5, missing_files=1)
+    monkeypatch.setattr(menu, "_check_folder_reachability", lambda _cfg: (True, []))
+
+    menu._generate_auto_chapters_flow(orch, orch.config)
+
+    assert "1 movie needs Auto Chapters, but its file wasn't found." in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    ("flow_name", "all_done"),
+    [
+        ("_generate_auto_chapters_flow", "All movies have Auto Chapters. Nothing to do here."),
+        ("_update_end_credits_flow", "No movies need an End Credits update right now."),
+    ],
+)
+def test_without_missing_files_nothing_to_do_stays(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    flow_name: str,
+    all_done: str,
+) -> None:
+    orch = _flow_with_stats(total_movies=1322)
+    monkeypatch.setattr(menu, "_check_folder_reachability", lambda _cfg: (True, []))
+
+    getattr(menu, flow_name)(orch, orch.config)
+
+    out = capsys.readouterr().out
+    assert all_done in out
+    assert "weren't found" not in out
+
+
+# --- An address typed instead of a folder path --------------------------------
+
+
+@pytest.mark.parametrize("typed", ["smb://nas.local/media/Filmek", "NFS://nas/Filmek"])
+def test_a_network_address_says_the_share_has_to_be_mounted(
+    mapping_flow: SimpleNamespace,
+    prompt: SimpleNamespace,
+    capsys: pytest.CaptureFixture[str],
+    typed: str,
+) -> None:
+    prompt.answers = [1]
+    mapping_flow.typed = [typed, "/mnt/nas/Filmek"]
+
+    menu._change_folder_mapping(mapping_flow.config, mapping_flow.orch)
+
+    out = " ".join(capsys.readouterr().out.split())
+    scheme = typed.split(":")[0]
+    assert f"That's a network address ({scheme}://...), not a folder path." in out
+    assert "mounted as a folder on this computer first" in out
+    assert 'INSTALL.md, "Mounting a network share"' in out
+    assert "doesn't look like a folder path" not in out
+    assert mapping_flow.config.paths[0].local == "/mnt/nas/Filmek/"  # asked again
+
+
+def test_a_local_folders_address_is_used_as_its_path(
+    mapping_flow: SimpleNamespace, prompt: SimpleNamespace, capsys: pytest.CaptureFixture[str]
+) -> None:
+    prompt.answers = [1]
+    mapping_flow.typed = ["file:///home/user/%C3%81rv%C3%A1cska%20filmek"]
+
+    menu._change_folder_mapping(mapping_flow.config, mapping_flow.orch)
+
+    assert mapping_flow.config.paths[0].local == "/home/user/Árvácska filmek/"
+    assert "network address" not in capsys.readouterr().out
