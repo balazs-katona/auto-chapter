@@ -1,6 +1,6 @@
 # auto-chapter
 
-**v0.4.7**
+**v1.0.0**
 
 Automatic chapter marker generation for MKV movies on a Plex server.
 
