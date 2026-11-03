@@ -1895,3 +1895,24 @@ def test_find_by_title_single_fresh_match_without_plex_end_credits(
     menu._find_by_title(find_flow.orch)
 
     assert "Found 1 match: Heat (2000)  (no Plex End Credits yet)" in capsys.readouterr().out
+
+
+# --- A wrong folder path: say where to fix it ------------------------------------
+#
+# The owner set a wrong path in the installer on purpose and found the fix in
+# Settings only by chance: the message spoke only of mounting.
+
+FIX_HINT = "If the path is wrong: Settings → Folder mappings → 2) Change a mapping's local or mounted path."
+
+
+@pytest.mark.parametrize("all_unreachable", [True, False], ids=["none-reachable", "some"])
+def test_an_unreachable_folder_says_where_to_fix_a_wrong_path(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], all_unreachable: bool
+) -> None:
+    mappings = [PathMapping(plex="/share/A/", local=str(tmp_path / "wrong") + "/")]
+    if not all_unreachable:
+        mappings.append(PathMapping(plex="/share/B/", local=str(tmp_path) + "/"))
+
+    menu._check_folder_reachability(SimpleNamespace(paths=mappings))
+
+    assert FIX_HINT in " ".join(capsys.readouterr().out.split())  # a long line may wrap

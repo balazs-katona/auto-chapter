@@ -597,7 +597,10 @@ PYEOF
                     while true; do
                         ask "  Use it anyway? (y/n): " yn
                         case "$yn" in
-                            y|Y|yes|YES) break ;;
+                            y|Y|yes|YES)
+                                echo -e "  ${DIM}You can change it later in the app: Settings → Folder mappings.${NC}"
+                                break
+                                ;;
                             n|N|no|NO) use_path=0; break ;;
                             *) echo "  Please type 'y' or 'n'." ;;
                         esac

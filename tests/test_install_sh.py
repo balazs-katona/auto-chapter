@@ -189,3 +189,13 @@ def test_with_only_wget_uv_comes_through_wget() -> None:
 
 def test_as_root_no_sudo() -> None:
     assert _commands("arch", "ffmpeg", sudo="") == ["pacman -S --needed --noconfirm ffmpeg"]
+
+
+def test_keeping_a_missing_path_says_where_to_change_it_later() -> None:
+    """A wrong path kept with "Use it anyway? y" was easy to fix only for
+    someone who already knew Settings > Folder mappings."""
+    text = INSTALL_SH.read_text(encoding="utf-8")
+    use_anyway = text[text.index('ask "  Use it anyway? (y/n): " yn') :]
+    yes_branch = use_anyway[: use_anyway.index("n|N|no|NO)")]
+
+    assert "You can change it later in the app: Settings → Folder mappings." in yes_branch

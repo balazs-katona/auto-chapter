@@ -729,6 +729,14 @@ def _process_first_n(
             candidates.remove(mv)
 
 
+# An unreachable folder may also be a wrong path (a typo in the installer): say
+# where it is fixed -- the owner found it only by chance (0.4.3).
+_WRONG_PATH_HINT = (
+    "[dim]If the path is wrong: Settings → Folder mappings → "
+    "2) Change a mapping's local or mounted path.[/dim]"
+)
+
+
 def _check_folder_reachability(config: Config) -> tuple[bool, list[str]]:
     """Check enabled mapped folders are reachable before scanning.
 
@@ -757,6 +765,7 @@ def _check_folder_reachability(config: Config) -> tuple[bool, list[str]]:
         console.print(
             "[dim]Check that the drive/share is mounted, then try again.[/dim]"
         )
+        console.print(_WRONG_PATH_HINT)
         return False, unreachable
 
     console.print("\n[yellow]Some mapped folders aren't reachable right now:[/yellow]")
@@ -766,6 +775,7 @@ def _check_folder_reachability(config: Config) -> tuple[bool, list[str]]:
         "[dim]Check that the drive/share is mounted. "
         "Movies there will show as missing.[/dim]"
     )
+    console.print(_WRONG_PATH_HINT)
     return True, unreachable
 
 
