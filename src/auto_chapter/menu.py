@@ -285,18 +285,22 @@ def _run_batch(movies: list[Movie], orch: Orchestrator) -> list[Movie]:
     single = len(movies) == 1
     shutdown_toggle = ShutdownToggle()
 
+    # With one movie, the same words as Find by title: there is no "batch".
     def on_shutdown_toggle(scheduled: bool) -> None:
         if scheduled:
+            when = "once this movie is written" if single else "after this batch finishes"
             console.print(
                 "\n[bold yellow]Shutdown scheduled.[/bold yellow] "
-                "The system will power off after this batch finishes. "
+                f"The system will power off {when}. "
                 "[dim]Press 's' to cancel.[/dim]"
             )
         else:
-            console.print(
-                "\n[bold]Shutdown cancelled.[/bold] "
-                "[dim]The batch will continue without shutting down.[/dim]"
+            going_on = (
+                "Continuing without shutting down."
+                if single
+                else "The batch will continue without shutting down."
             )
+            console.print(f"\n[bold]Shutdown cancelled.[/bold] [dim]{going_on}[/dim]")
 
     succeeded_movies: list[Movie] = []
     failed = 0
@@ -372,7 +376,11 @@ def _run_batch(movies: list[Movie], orch: Orchestrator) -> list[Movie]:
     # more urgent "I need control back immediately" signal and DOES cancel
     # the schedule, same as an all-failed batch (nothing to "wrap up" for).
     if shutdown_toggle.scheduled:
-        if was_force_stopped:
+        if single and not succeeded:
+            console.print(
+                "[dim]Scheduled shutdown cancelled -- the movie wasn't written.[/dim]\n"
+            )
+        elif was_force_stopped:
             console.print(
                 "[dim]Scheduled shutdown cancelled -- the batch was stopped immediately.[/dim]\n"
             )

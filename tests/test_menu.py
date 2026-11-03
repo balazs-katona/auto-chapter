@@ -2277,3 +2277,39 @@ def test_several_movies_keep_the_two_step_ctrl_c(
 
     assert used == ["after this movie"]
     assert "twice for immediate stop" in capsys.readouterr().out
+
+
+class _TogglingToggle(_RecordingToggle):
+    """Presses 's' twice (schedule, cancel) and once more (schedule) as soon
+    as it starts listening, so every message of the callback is printed."""
+
+    def start(self, on_toggle):  # type: ignore[no-untyped-def]
+        super().start(on_toggle)
+        for scheduled in (True, False, True):
+            self.scheduled = scheduled
+            on_toggle(scheduled)
+        return True
+
+
+@pytest.mark.parametrize("count", [1, 2])
+def test_shutdown_messages_say_movie_or_batch(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], count: int
+) -> None:
+    """Owner's 1.0.0 test: with one movie the 's' messages still spoke of a batch."""
+    _ctrl_c_handlers(monkeypatch)
+    monkeypatch.setattr(menu, "ShutdownToggle", _TogglingToggle)
+    monkeypatch.setattr(menu, "_process_one", lambda _mv, _orch: None)  # nothing written
+    movies = [_movie(t, True) for t in ("A", "B")[:count]]
+
+    menu._run_batch(movies, SimpleNamespace())
+
+    out = " ".join(capsys.readouterr().out.split())
+    if count == 1:
+        assert "The system will power off once this movie is written." in out
+        assert "Shutdown cancelled. Continuing without shutting down." in out
+        assert "Scheduled shutdown cancelled -- the movie wasn't written." in out
+        assert "batch" not in out
+    else:
+        assert "The system will power off after this batch finishes." in out
+        assert "The batch will continue without shutting down." in out
+        assert "no movies were processed successfully" in out
