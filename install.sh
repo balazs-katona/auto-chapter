@@ -362,6 +362,22 @@ ensure_bin_on_path() {
     fi
 }
 
+# The command the user types. It calls uv by the full path found now: where
+# uv lives in ~/.local/bin (uv's own installer, e.g. on Ubuntu), a shell that
+# doesn't read the user's settings -- a remote command, a scheduled job --
+# didn't find it by name (1.0.0 VM tests). If that path is gone later (uv
+# moved), it falls back to the name.
+write_launcher() {
+    local launcher="$1" project_dir="$2" uv_path="$3"
+    cat > "$launcher" <<LAUNCHEOF
+#!/usr/bin/env bash
+UV="$uv_path"
+[ -x "\$UV" ] || UV=uv
+cd "$project_dir" && exec "\$UV" run auto-chapter "\$@"
+LAUNCHEOF
+    chmod +x "$launcher"
+}
+
 need_config=true
 if [ -f "$CONF_FILE" ] && [ -f "$ENV_FILE" ]; then
     token_in_env=$(grep -E '^PLEX_TOKEN=' "$ENV_FILE" 2>/dev/null | cut -d= -f2)
@@ -819,11 +835,7 @@ fi
 
 # --- 5. Launcher + PATH installation ---
 LAUNCHER="$PROJECT_DIR/auto-chapter"
-cat > "$LAUNCHER" <<LAUNCHEOF
-#!/usr/bin/env bash
-cd "$PROJECT_DIR" && exec uv run auto-chapter "\$@"
-LAUNCHEOF
-chmod +x "$LAUNCHER"
+write_launcher "$LAUNCHER" "$PROJECT_DIR" "$(command -v uv)"
 
 # Install a symlink into ~/.local/bin -- the standard user-PATH location on Linux.
 # This works across shells (bash, zsh, fish) and non-interactive contexts

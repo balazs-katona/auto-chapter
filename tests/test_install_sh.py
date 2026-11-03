@@ -464,3 +464,52 @@ def test_otherwise_the_user_is_told_how(tmp_path: Path, case: str) -> None:
         shell_rc = str(tmp_path / "ro" / ".bashrc")
 
     assert _ensure_on_path(tmp_path, "/usr/bin", shell_rc) == "manual"
+
+
+# --- The launcher calls uv by its full path ------------------------------------
+#
+# 1.0.0 VM test on Ubuntu: uv was in ~/.local/bin (its own installer), and a
+# shell that doesn't read the user's settings (a remote command) got "uv: not
+# found" from `auto-chapter`.
+
+
+def _launcher(tmp_path: Path, uv_path: str) -> Path:
+    project = tmp_path / "app folder"  # a space, like a real folder may have
+    project.mkdir()
+    launcher = project / "auto-chapter"
+    script = f'{_bash_function("write_launcher")}\nwrite_launcher "{launcher}" "{project}" "{uv_path}"\n'
+    subprocess.run(["bash", "-c", script], check=True)
+    return launcher
+
+
+def _fake_uv(folder: Path, name: str) -> Path:
+    folder.mkdir(parents=True, exist_ok=True)
+    uv = folder / "uv"
+    uv.write_text(f'#!/bin/bash\necho "{name}: $* in $PWD"\n', encoding="utf-8")
+    uv.chmod(0o755)
+    return uv
+
+
+def test_the_launcher_finds_uv_without_the_users_path(tmp_path: Path) -> None:
+    uv = _fake_uv(tmp_path / "home" / ".local" / "bin", "full path")
+    launcher = _launcher(tmp_path, str(uv))
+
+    done = subprocess.run(
+        [str(launcher), "--x"], env={"PATH": "/usr/bin:/bin"}, capture_output=True, text=True,
+        check=False,
+    )  # fmt: skip
+
+    assert done.stdout.strip() == f"full path: run auto-chapter --x in {tmp_path / 'app folder'}"
+
+
+def test_the_launcher_falls_back_to_uv_by_name(tmp_path: Path) -> None:
+    """uv moved after the install: the name on PATH still works."""
+    on_path = _fake_uv(tmp_path / "bin", "by name")
+    launcher = _launcher(tmp_path, str(tmp_path / "gone" / "uv"))
+
+    done = subprocess.run(
+        [str(launcher)], env={"PATH": f"{on_path.parent}:/usr/bin:/bin"}, capture_output=True,
+        text=True, check=False,
+    )  # fmt: skip
+
+    assert done.stdout.startswith("by name: run auto-chapter")
