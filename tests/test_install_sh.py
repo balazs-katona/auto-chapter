@@ -199,3 +199,91 @@ def test_keeping_a_missing_path_says_where_to_change_it_later() -> None:
     yes_branch = use_anyway[: use_anyway.index("n|N|no|NO)")]
 
     assert "You can change it later in the app: Settings → Folder mappings." in yes_branch
+
+
+# --- Folder mapping: are Plex's movies in the folder typed? -----------------
+
+
+def _movies_are_here(
+    tmp_path: Path, counts: str, stdin: str = ""
+) -> subprocess.CompletedProcess[str]:
+    """Run movies_are_here with a fake `uv` that answers `counts` (what
+    `python -m auto_chapter.folder_match` would print) and notes how it was called."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    uv = bin_dir / "uv"
+    uv.write_text(
+        f'#!/bin/bash\necho "$PLEX_URL $PLEX_TOKEN $*" > "{tmp_path}/called"\n'
+        f'printf "%s" "{counts}"\n',
+        encoding="utf-8",
+    )
+    uv.chmod(0o755)
+    text = INSTALL_SH.read_text(encoding="utf-8")
+    helpers = "\n".join(m.group(0) for m in re.finditer(r"^(ok|warn)\(\).*$", text, re.MULTILINE))
+    script = (
+        f"{helpers}\n{_bash_function('ask')}\n{_bash_function('movies_are_here')}\n"
+        f'PATH="{bin_dir}:$PATH"\nplex_url="http://plex:32400"\nplex_token="abc"\n'
+        'movies_are_here "/plex/Filmek/" "/mnt/Filmek/"\necho "rc=$?"\n'
+    )
+    return subprocess.run(
+        ["bash", "-c", script], input=stdin, capture_output=True, text=True, timeout=10, check=False
+    )
+
+
+def test_installer_shows_how_many_of_plexs_movies_are_in_the_folder(tmp_path: Path) -> None:
+    done = _movies_are_here(tmp_path, "650 653")
+
+    assert "Found 650 of 653 Plex movies in this folder." in done.stdout
+    assert "Is the path right?" not in done.stdout
+    assert done.stdout.rstrip().endswith("rc=0")
+    called = (tmp_path / "called").read_text(encoding="utf-8").split()
+    assert called == [
+        "http://plex:32400", "abc", "run", "python", "-m", "auto_chapter.folder_match",
+        "/plex/Filmek/", "/mnt/Filmek/",
+    ]  # fmt: skip
+
+
+@pytest.mark.parametrize(("answer", "rc"), [("1", "rc=1"), ("2", "rc=0")])
+def test_installer_asks_when_none_of_plexs_movies_are_there(
+    tmp_path: Path, answer: str, rc: str
+) -> None:
+    """1) Enter another path (rc 1: the path question again), 2) Use it anyway."""
+    done = _movies_are_here(tmp_path, "0 653", stdin=f"x\n{answer}\n")
+
+    assert "Found 0 of 653 Plex movies in this folder. Is the path right?" in done.stdout
+    assert "1) Enter another path" in done.stdout
+    assert "2) Use it anyway" in done.stdout
+    assert "Please type 1 or 2." in done.stdout  # the "x"
+    assert done.stdout.rstrip().endswith(rc)
+
+
+@pytest.mark.parametrize("counts", ["", "0 0", "garbage"])
+def test_installer_says_nothing_when_it_cannot_compare(tmp_path: Path, counts: str) -> None:
+    done = _movies_are_here(tmp_path, counts)
+
+    assert "Found" not in done.stdout
+    assert done.stdout.rstrip().endswith("rc=0")
+
+
+def test_installer_compares_only_a_folder_that_exists() -> None:
+    """A path that isn't there gets the "Use it anyway?" question instead."""
+    text = INSTALL_SH.read_text(encoding="utf-8")
+    call = text.index('movies_are_here "$p_path" "$l_path"')
+    guard = text.rindex('if [ -d "$l_path" ]; then', 0, call)
+
+    assert text[guard:call].count("\n") == 2  # right inside that if
+
+
+# --- End message: judged by the user's own PATH -----------------------------
+
+
+def test_the_path_message_uses_the_users_own_path() -> None:
+    """After installing uv the installer adds ~/.local/bin to its own PATH, so
+    judging by that PATH always said "works from any shell" (0.4.4 Ubuntu test)."""
+    lines = _code_lines()
+    saved = lines.index('USER_PATH="$PATH"')
+    first_export = next(i for i, line in enumerate(lines) if line.startswith("export PATH="))
+
+    assert saved < first_export
+    assert 'case ":$USER_PATH:" in' in lines
+    assert 'case ":$PATH:" in' not in lines

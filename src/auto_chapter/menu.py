@@ -1380,7 +1380,7 @@ def _folder_mappings(config: Config, orch: Orchestrator) -> None:
                     # the copy taken when the screen opened.
                     plex_folders, plex_problem = fresh, ""
             elif choice == _MAP_CHANGE:
-                _change_folder_mapping(config)
+                _change_folder_mapping(config, orch)
             elif choice == _MAP_TOGGLE:
                 _toggle_folder_mapping(config)
             elif choice == _MAP_REMOVE:
@@ -1429,35 +1429,24 @@ def _remove_folder_mapping(config: Config) -> None:
     console.print(f"[green]OK[/green] {escape(m.local)} -> {escape(m.plex)} removed.")
 
 
-def _ask_path_on_this_computer() -> str | None:
-    """Ask where THIS computer reaches a Plex folder (Plex may run elsewhere).
+def _ask_path_on_this_computer(orch: Orchestrator, plex_path: str) -> str | None:
+    """Ask where THIS computer reaches Plex folder `plex_path` (Plex may run elsewhere).
 
     Returns the path with a trailing "/", or None if the user cancelled or
     declined to use a path that is not reachable right now. An unreachable
     path is allowed after a question: the NAS may simply not be mounted yet.
+    A reachable one is compared with the movies Plex has in the folder
+    (_movies_are_here); if none of them are there, the user may type another.
     """
     while True:
-        path = _ask_text(
-            "Local or mounted path to this folder on this computer",
-            empty_hint="Please type the folder path, or 0 to cancel.",
-        )
-        if not path:
+        path = _ask_one_path()
+        if path is None:
             return None
-        # Expand ~ to user home
-        path = str(Path(path).expanduser())
-        # Absolute path check
-        if not path.startswith("/"):
-            console.print(
-                "[yellow]That doesn't look like a folder path. It should start with '/' or '~/'.[/yellow]"
-            )
+        reachable = check_dir_with_timeout(path)
+        if reachable is True:
+            if _movies_are_here(orch, plex_path, path):
+                return path
             continue
-        break
-
-    if not path.endswith("/"):
-        path += "/"
-
-    reachable = check_dir_with_timeout(path)
-    if reachable is not True:
         if reachable is False:
             console.print(f"[yellow]{escape(path)} does not exist on this computer.[/yellow]")
             console.print(
@@ -1478,12 +1467,57 @@ def _ask_path_on_this_computer() -> str | None:
         except (KeyboardInterrupt, EOFError):
             console.print()
             return None
-        if keep.lower() != "y":
+        return path if keep.lower() == "y" else None
+
+
+def _movies_are_here(orch: Orchestrator, plex_path: str, path: str) -> bool:
+    """Compare a reachable folder with the movies Plex has in `plex_path`.
+
+    Shows how many of them are here. Every movie is looked up, in one listing
+    of the folder (folder_match). False when none are and the user wants to
+    type another path. If it can't tell (Plex not answering, folder not read
+    in time, no movies in Plex's folder) it says nothing and keeps the path.
+    """
+    console.print("[dim]Comparing with the movies Plex has in this folder...[/dim]")
+    try:
+        match = orch.plex.folder_match(plex_path, path)
+    except Exception as e:
+        log.warning("folder_match_failed", error=str(e))
+        return True
+    if match is None or match.total == 0:
+        return True
+    found = f"Found {match.found} of {match.total} Plex movies in this folder."
+    if match.found:
+        console.print(f"[green]OK[/green] {found}")
+        return True
+    console.print(f"[yellow]{found} Is the path right?[/yellow]")
+    console.print("  [cyan]1[/cyan]) Enter another path")
+    console.print("  [cyan]2[/cyan]) Use it anyway")
+    choice = IntPrompt.ask("Choose", choices=["1", "2"], show_choices=True)
+    return choice == 2
+
+
+def _ask_one_path() -> str | None:
+    """The folder path the user types (~ expanded, final "/"), or None for 0."""
+    while True:
+        path = _ask_text(
+            "Local or mounted path to this folder on this computer",
+            empty_hint="Please type the folder path, or 0 to cancel.",
+        )
+        if not path:
             return None
-    return path
+        # Expand ~ to user home
+        path = str(Path(path).expanduser())
+        # Absolute path check
+        if not path.startswith("/"):
+            console.print(
+                "[yellow]That doesn't look like a folder path. It should start with '/' or '~/'.[/yellow]"
+            )
+            continue
+        return path if path.endswith("/") else path + "/"
 
 
-def _change_folder_mapping(config: Config) -> None:
+def _change_folder_mapping(config: Config, orch: Orchestrator) -> None:
     """Change where this computer reaches an already mapped Plex folder.
 
     Keeps the mapping's active/disabled state. Saves the new path at once.
@@ -1495,7 +1529,7 @@ def _change_folder_mapping(config: Config) -> None:
     console.print(f"\n[bold]Plex path:[/bold] {escape(m.plex)}")
     console.print(f"[bold]Now on this computer:[/bold] {escape(m.local)}")
 
-    new_path = _ask_path_on_this_computer()
+    new_path = _ask_path_on_this_computer(orch, m.plex)
     if new_path is None:
         return
     if new_path == m.local:
@@ -1552,7 +1586,7 @@ def _add_folder_mapping(config: Config, orch: Orchestrator) -> list[str] | None:
     plex_path = unmapped[choice - 1]
     console.print(f"\n[bold]Plex path:[/bold] {escape(plex_path)}")
 
-    local_path = _ask_path_on_this_computer()
+    local_path = _ask_path_on_this_computer(orch, plex_path)
     if local_path is None:
         return all_folders
 

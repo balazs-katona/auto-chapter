@@ -12,6 +12,7 @@ import pytest
 from auto_chapter import menu
 from auto_chapter.config import PathMapping
 from auto_chapter.errors import MovieReadError
+from auto_chapter.folder_match import FolderMatch
 from auto_chapter.menu import _ask_credits_filter, parse_selection
 from auto_chapter.models import (
     Chapter,
@@ -20,7 +21,13 @@ from auto_chapter.models import (
     Movie,
     ProcessingResult,
 )
-from auto_chapter.plex_client import CreditsScanStats, ScanStats, SkippedMatch, SkipReason
+from auto_chapter.plex_client import (
+    CreditsScanStats,
+    PlexUnavailableError,
+    ScanStats,
+    SkippedMatch,
+    SkipReason,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -911,7 +918,10 @@ def mapping_flow(monkeypatch: pytest.MonkeyPatch, prompt: SimpleNamespace) -> Si
 
     `flow.typed` is what the user types at the path question, `flow.yn` the
     answers to "Use it anyway?" / "Remove ...?", `flow.reachable` what the
-    reachability check finds (True / False / None = timed out).
+    reachability check finds (True / False / None = timed out), `flow.matches`
+    what comparing a reachable folder with Plex's movies finds, one per
+    comparison (FolderMatch, None = couldn't tell, or an exception to raise;
+    none left = None). `flow.compared` records (plex path, local path).
     """
     state = SimpleNamespace(
         config=SimpleNamespace(
@@ -927,6 +937,8 @@ def mapping_flow(monkeypatch: pytest.MonkeyPatch, prompt: SimpleNamespace) -> Si
         reachable=True,
         plex_folders=["/plex/Filmek/", "/plex/Sorozat/", "/plex/Uj/"],
         plex_calls=0,
+        matches=[],
+        compared=[],
     )
 
     def list_movie_folders() -> list[str]:
@@ -955,7 +967,16 @@ def mapping_flow(monkeypatch: pytest.MonkeyPatch, prompt: SimpleNamespace) -> Si
         "_save_config_to_disk",
         lambda cfg, *_a, **_k: state.saved.append([(m.plex, m.local, m.enabled) for m in cfg.paths]),
     )
-    state.orch = SimpleNamespace(plex=SimpleNamespace(list_movie_folders=list_movie_folders))
+    def folder_match(plex_folder: str, local_path: str) -> FolderMatch | None:
+        state.compared.append((plex_folder, local_path))
+        match = state.matches.pop(0) if state.matches else None
+        if isinstance(match, Exception):
+            raise match
+        return match
+
+    state.orch = SimpleNamespace(
+        plex=SimpleNamespace(list_movie_folders=list_movie_folders, folder_match=folder_match)
+    )
     return state
 
 
@@ -1027,7 +1048,7 @@ def test_change_keeps_the_active_or_disabled_state(
     prompt.answers = [2]  # the disabled one
     mapping_flow.typed = ["/mnt/new/Sorozat/"]
 
-    menu._change_folder_mapping(mapping_flow.config)
+    menu._change_folder_mapping(mapping_flow.config, mapping_flow.orch)
 
     changed = mapping_flow.config.paths[1]
     assert changed.local == "/mnt/new/Sorozat/"
@@ -1043,7 +1064,7 @@ def test_change_saves_the_config_once_and_reports_old_and_new_path(
     prompt.answers = [1]
     mapping_flow.typed = ["/mnt/new/Filmek/"]
 
-    menu._change_folder_mapping(mapping_flow.config)
+    menu._change_folder_mapping(mapping_flow.config, mapping_flow.orch)
 
     assert len(mapping_flow.saved) == 1
     assert ("/plex/Filmek/", "/mnt/new/Filmek/", True) in mapping_flow.saved[0]
@@ -1058,7 +1079,7 @@ def test_change_expands_the_home_folder_and_adds_the_trailing_slash(
     prompt.answers = [1]
     mapping_flow.typed = ["~/Filmek"]
 
-    menu._change_folder_mapping(mapping_flow.config)
+    menu._change_folder_mapping(mapping_flow.config, mapping_flow.orch)
 
     assert mapping_flow.config.paths[0].local == str(Path.home()) + "/Filmek/"
 
@@ -1071,7 +1092,7 @@ def test_change_rejects_a_relative_path_and_asks_again(
     prompt.answers = [1]
     mapping_flow.typed = ["media/Filmek", "/mnt/new/Filmek/"]
 
-    menu._change_folder_mapping(mapping_flow.config)
+    menu._change_folder_mapping(mapping_flow.config, mapping_flow.orch)
 
     assert "doesn't look like a folder path" in capsys.readouterr().out
     assert mapping_flow.config.paths[0].local == "/mnt/new/Filmek/"
@@ -1082,7 +1103,7 @@ def test_change_cancelled_at_the_pick_list_changes_nothing(
 ) -> None:
     prompt.answers = [0]
 
-    menu._change_folder_mapping(mapping_flow.config)
+    menu._change_folder_mapping(mapping_flow.config, mapping_flow.orch)
 
     assert mapping_flow.config.paths[0].local == "/mnt/old/Filmek/"
     assert mapping_flow.saved == []
@@ -1094,7 +1115,7 @@ def test_change_cancelled_at_the_path_question_changes_nothing(
     prompt.answers = [1]
     mapping_flow.typed = [""]  # 0 / Ctrl+C at the path question
 
-    menu._change_folder_mapping(mapping_flow.config)
+    menu._change_folder_mapping(mapping_flow.config, mapping_flow.orch)
 
     assert mapping_flow.config.paths[0].local == "/mnt/old/Filmek/"
     assert mapping_flow.saved == []
@@ -1108,7 +1129,7 @@ def test_change_to_the_same_path_says_so_and_saves_nothing(
     prompt.answers = [1]
     mapping_flow.typed = ["/mnt/old/Filmek"]  # same as now, once the slash is added
 
-    menu._change_folder_mapping(mapping_flow.config)
+    menu._change_folder_mapping(mapping_flow.config, mapping_flow.orch)
 
     assert "Nothing changed" in capsys.readouterr().out
     assert mapping_flow.saved == []
@@ -1124,7 +1145,7 @@ def test_change_to_an_unreachable_path_is_kept_only_if_the_user_confirms(
     mapping_flow.typed = ["/mnt/not-mounted/Filmek"]
     mapping_flow.yn = ["n"]
 
-    menu._change_folder_mapping(mapping_flow.config)
+    menu._change_folder_mapping(mapping_flow.config, mapping_flow.orch)
 
     assert mapping_flow.config.paths[0].local == "/mnt/old/Filmek/"
 
@@ -1132,7 +1153,7 @@ def test_change_to_an_unreachable_path_is_kept_only_if_the_user_confirms(
     mapping_flow.typed = ["/mnt/not-mounted/Filmek"]
     mapping_flow.yn = ["y"]
 
-    menu._change_folder_mapping(mapping_flow.config)
+    menu._change_folder_mapping(mapping_flow.config, mapping_flow.orch)
 
     assert mapping_flow.config.paths[0].local == "/mnt/not-mounted/Filmek/"
 
@@ -1145,7 +1166,7 @@ def test_path_question_names_both_cases_and_never_says_remote(
     prompt.answers = [1]
     mapping_flow.typed = ["/mnt/new/Filmek/"]
 
-    menu._change_folder_mapping(mapping_flow.config)
+    menu._change_folder_mapping(mapping_flow.config, mapping_flow.orch)
 
     question = mapping_flow.asked_text[0]
     assert question == "Local or mounted path to this folder on this computer"
@@ -1272,7 +1293,7 @@ def test_pick_lists_show_both_paths_and_the_state(
 ) -> None:
     prompt.answers = [0]
     fn = {
-        "change": menu._change_folder_mapping,
+        "change": lambda cfg: menu._change_folder_mapping(cfg, mapping_flow.orch),
         "toggle": menu._toggle_folder_mapping,
         "remove": menu._remove_folder_mapping,
     }[action]
@@ -1983,3 +2004,106 @@ def test_ctrl_c_while_testing_a_plex_address_goes_back_to_plex_connection(
 
     assert len(prompt.asked) == 2  # the Plex connection screen was shown again
     assert "Cancelled." in capsys.readouterr().out
+
+
+# --- Folder mappings: is the folder here the one Plex has? ------------------
+#
+# 0.4.4 Ubuntu test: Plex's "Filmek" folder mapped to the "Filmek-Bence" folder
+# was accepted (it exists) and showed only as 10 missing files much later.
+
+
+def test_adding_a_folder_shows_how_many_of_plexs_movies_are_there(
+    mapping_flow: SimpleNamespace, prompt: SimpleNamespace, capsys: pytest.CaptureFixture[str]
+) -> None:
+    prompt.answers = [1]  # the only unmapped Plex folder
+    mapping_flow.typed = ["/mnt/new/Uj"]
+    mapping_flow.matches = [FolderMatch(found=650, total=653)]
+
+    menu._add_folder_mapping(mapping_flow.config, mapping_flow.orch)
+
+    assert mapping_flow.compared == [("/plex/Uj/", "/mnt/new/Uj/")]
+    assert "OK Found 650 of 653 Plex movies in this folder." in capsys.readouterr().out
+    assert mapping_flow.config.paths[-1].local == "/mnt/new/Uj/"
+
+
+def test_a_folder_without_any_of_plexs_movies_can_be_typed_again(
+    mapping_flow: SimpleNamespace, prompt: SimpleNamespace, capsys: pytest.CaptureFixture[str]
+) -> None:
+    prompt.answers = [1, 1]  # the unmapped folder; 1) Enter another path
+    mapping_flow.typed = ["/mnt/wrong/", "/mnt/right/"]
+    mapping_flow.matches = [FolderMatch(found=0, total=653), FolderMatch(found=653, total=653)]
+
+    menu._add_folder_mapping(mapping_flow.config, mapping_flow.orch)
+
+    out = " ".join(capsys.readouterr().out.split())
+    assert "Found 0 of 653 Plex movies in this folder. Is the path right?" in out
+    assert "1) Enter another path" in out
+    assert "2) Use it anyway" in out
+    assert mapping_flow.config.paths[-1].local == "/mnt/right/"
+    assert len(mapping_flow.saved) == 1
+
+
+def test_a_folder_without_any_of_plexs_movies_can_be_kept(
+    mapping_flow: SimpleNamespace, prompt: SimpleNamespace
+) -> None:
+    prompt.answers = [1, 2]  # the unmapped folder; 2) Use it anyway
+    mapping_flow.typed = ["/mnt/odd/"]
+    mapping_flow.matches = [FolderMatch(found=0, total=653)]
+
+    menu._add_folder_mapping(mapping_flow.config, mapping_flow.orch)
+
+    assert mapping_flow.config.paths[-1].local == "/mnt/odd/"
+
+
+def test_changing_a_path_compares_it_with_that_mappings_plex_folder(
+    mapping_flow: SimpleNamespace, prompt: SimpleNamespace, capsys: pytest.CaptureFixture[str]
+) -> None:
+    prompt.answers = [1, 1]  # first mapping; 1) Enter another path
+    mapping_flow.typed = ["/mnt/wrong/", "/mnt/new/Filmek/"]
+    mapping_flow.matches = [FolderMatch(found=0, total=10), FolderMatch(found=9, total=10)]
+
+    menu._change_folder_mapping(mapping_flow.config, mapping_flow.orch)
+
+    assert mapping_flow.compared == [
+        ("/plex/Filmek/", "/mnt/wrong/"),
+        ("/plex/Filmek/", "/mnt/new/Filmek/"),
+    ]
+    assert "Found 9 of 10 Plex movies" in capsys.readouterr().out
+    assert mapping_flow.config.paths[0].local == "/mnt/new/Filmek/"
+
+
+@pytest.mark.parametrize(
+    "match",
+    [None, FolderMatch(found=0, total=0), PlexUnavailableError("Plex is not answering.")],
+    ids=["could not tell", "no movies in Plex's folder", "Plex not answering"],
+)
+def test_when_it_cant_compare_it_says_nothing_and_keeps_the_path(
+    mapping_flow: SimpleNamespace,
+    prompt: SimpleNamespace,
+    capsys: pytest.CaptureFixture[str],
+    match: object,
+) -> None:
+    prompt.answers = [1]
+    mapping_flow.typed = ["/mnt/new/Uj/"]
+    mapping_flow.matches = [match]
+
+    menu._add_folder_mapping(mapping_flow.config, mapping_flow.orch)
+
+    out = capsys.readouterr().out
+    assert "Found" not in out.replace("Found 1 unmapped", "")
+    assert mapping_flow.config.paths[-1].local == "/mnt/new/Uj/"
+
+
+def test_an_unreachable_folder_is_not_compared(
+    mapping_flow: SimpleNamespace, prompt: SimpleNamespace
+) -> None:
+    """Not there (or not answering): nothing to list; the existing question decides."""
+    mapping_flow.reachable = False
+    prompt.answers = [1]
+    mapping_flow.typed = ["/mnt/not-mounted/Uj/"]
+    mapping_flow.yn = ["y"]
+
+    menu._add_folder_mapping(mapping_flow.config, mapping_flow.orch)
+
+    assert mapping_flow.compared == []
+    assert mapping_flow.config.paths[-1].local == "/mnt/not-mounted/Uj/"

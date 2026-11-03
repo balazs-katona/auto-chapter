@@ -12,6 +12,7 @@ from plexapi.server import PlexServer
 from auto_chapter.config import PlexConfig
 from auto_chapter.console import console
 from auto_chapter.errors import friendly_plex_error, retry_on_plex_timeout
+from auto_chapter.folder_match import FolderMatch, match_folder
 from auto_chapter.logging_setup import get_logger
 from auto_chapter.models import AUTO_CHAPTER_PREFIX, CREDITS_CHAPTER_NAME, Movie
 from auto_chapter.path_mapping import PathMapper
@@ -247,6 +248,11 @@ class PlexClient:
         Deduplicates and appends a trailing slash for consistency.
         """
         return _movie_folders(self._require_server().library.sections())
+
+    def folder_match(self, plex_folder: str, local_path: str) -> FolderMatch | None:
+        """How many of the movies Plex has in `plex_folder` are in `local_path`
+        on this computer (see folder_match.match_folder)."""
+        return match_folder(self._require_server(), plex_folder, local_path)
 
     def _scan_mapper(self, sections: list[Any]) -> tuple[PathMapper, list[str]]:
         """The mapper a scan works with, and the mappings it had to leave out.

@@ -21,6 +21,10 @@ step()  { echo -e "\n${BOLD}$1${NC}"; }
 # Allow the user to cancel cleanly with Ctrl+C at any prompt
 trap 'echo; echo -e "${YELLOW}Installation cancelled.${NC}"; exit 130' INT
 
+# The user's PATH as it was. This script adds ~/.local/bin to its own PATH
+# after installing uv, so the end message must not judge by that one.
+USER_PATH="$PATH"
+
 PROJECT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 # Everything below (uv sync, config.yml, .env) works relative to the project
 # folder, so the installer also runs when started from somewhere else
@@ -279,6 +283,38 @@ for name in config.yml .env; do
     fi
 done
 [ -f "$ENV_FILE" ] && chmod 600 "$ENV_FILE"
+
+# Is the folder on this computer the folder Plex has? Every movie Plex has
+# in it is looked up, against one listing of the folder (the app's own
+# auto_chapter.folder_match, so both say the same). Shows how many are
+# there. Returns 1 if none are and the user wants to type another path;
+# says nothing and returns 0 if it can't tell.
+movies_are_here() {
+    local counts found total choice
+    echo -e "  ${DIM}Comparing with the movies Plex has in this folder...${NC}"
+    counts=$(PLEX_URL="$plex_url" PLEX_TOKEN="$plex_token" \
+        timeout 60 uv run python -m auto_chapter.folder_match "$1" "$2" 2>/dev/null) || true
+    # "FOUND TOTAL", or nothing when it can't tell
+    [[ "$counts" =~ ^([0-9]+)\ ([0-9]+)$ ]] || return 0
+    found=${BASH_REMATCH[1]}
+    total=${BASH_REMATCH[2]}
+    [ "$total" -gt 0 ] || return 0
+    if [ "$found" -gt 0 ]; then
+        ok "Found $found of $total Plex movies in this folder."
+        return 0
+    fi
+    warn "Found 0 of $total Plex movies in this folder. Is the path right?"
+    echo "  1) Enter another path"
+    echo "  2) Use it anyway"
+    while true; do
+        ask "  Choose [1/2]: " choice
+        case "$choice" in
+            1) return 1 ;;
+            2) return 0 ;;
+            *) echo "  Please type 1 or 2." ;;
+        esac
+    done
+}
 
 need_config=true
 if [ -f "$CONF_FILE" ] && [ -f "$ENV_FILE" ]; then
@@ -566,6 +602,7 @@ PYEOF
                 fi
 
                 no_path=0
+                use_path=1
                 while true; do
                     ask "  Where is this folder mounted on this computer? Path (0 to go back): " l_path
                     l_path=$(trim "$l_path")
@@ -580,18 +617,13 @@ PYEOF
                         echo "  That doesn't look like a folder path. It should start with '/' or '~/'."
                         continue
                     fi
-                    break
-                done
-                if [ "$no_path" = "1" ]; then
-                    echo "  No path given. Choose 1 to enter a path, or 2 to skip this folder."
-                    echo
-                    continue
-                fi
+                    [[ "$l_path" != */ ]] && l_path="${l_path}/"
 
-                [[ "$l_path" != */ ]] && l_path="${l_path}/"
-
-                use_path=1
-                if [ ! -d "$l_path" ]; then
+                    if [ -d "$l_path" ]; then
+                        # 1 = none of Plex's movies are there, another path wanted
+                        movies_are_here "$p_path" "$l_path" || continue
+                        break
+                    fi
                     warn "Path '$l_path' does not exist on this computer."
                     echo "  This is fine if the folder will be mounted later (e.g. NAS not connected yet)."
                     while true; do
@@ -605,6 +637,12 @@ PYEOF
                             *) echo "  Please type 'y' or 'n'." ;;
                         esac
                     done
+                    break
+                done
+                if [ "$no_path" = "1" ]; then
+                    echo "  No path given. Choose 1 to enter a path, or 2 to skip this folder."
+                    echo
+                    continue
                 fi
                 if [ "$use_path" = "0" ]; then
                     echo "  Not used. Choose 1 to enter another path, or 2 to skip this folder."
@@ -724,11 +762,20 @@ if [ -n "$SHELL_RC" ] && [ -f "$SHELL_RC" ]; then
     fi
 fi
 
-# Is ~/.local/bin already on PATH? If not, we tell the user how to fix it.
+# Is ~/.local/bin on the user's PATH? If not, but the shell's config file adds
+# it (uv's own installer writes such a line), a new terminal will have it.
+# Otherwise we tell the user how to fix it.
 NEEDS_PATH_HELP=false
-case ":$PATH:" in
+NEEDS_NEW_TERMINAL=false
+case ":$USER_PATH:" in
     *":$HOME/.local/bin:"*) : ;;
-    *) NEEDS_PATH_HELP=true ;;
+    *)
+        if [ -n "$SHELL_RC" ] && grep -qs '\.local/bin' "$SHELL_RC"; then
+            NEEDS_NEW_TERMINAL=true
+        else
+            NEEDS_PATH_HELP=true
+        fi
+        ;;
 esac
 
 step "Installation complete! (v$VERSION)"
@@ -747,6 +794,9 @@ if [ "$NEEDS_PATH_HELP" = "true" ]; then
     echo
     echo "Until then you can also run it with the full path:"
     echo -e "  ${DIM}$BIN_LINK${NC}"
+elif [ "$NEEDS_NEW_TERMINAL" = "true" ]; then
+    echo -e "To start auto-chapter, open a new terminal and type:  ${GREEN}${BOLD}auto-chapter${NC}"
+    echo -e "${DIM}(this terminal doesn't know the command yet)${NC}"
 else
     echo -e "To start auto-chapter, just type:  ${GREEN}${BOLD}auto-chapter${NC}"
     echo -e "${DIM}(works from any directory, any shell)${NC}"

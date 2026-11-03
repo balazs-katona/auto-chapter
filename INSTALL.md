@@ -71,7 +71,9 @@ The installer will ask you for:
 3. **Where Plex runs** -- on this computer, or on another machine such as a
    NAS. On another machine it then goes through Plex's movie folders one by
    one: use or skip each, and type where it is mounted on this computer
-   (see "Why path mapping?" below)
+   (see "Why path mapping?" below). It then shows how many of the movies
+   Plex has in that folder it found there -- if none, the path is probably
+   wrong, and you can type another one
 
 You can skip folder mapping entirely and add folders later from
 Settings inside the app -- the installer won't force you to configure
@@ -97,7 +99,8 @@ but reads/writes files locally (which needs the local path). The mapping
 translates between the two. The installer auto-discovers your Plex movie
 folders and lets you map or skip each one. A skipped folder can be mapped later
 in Settings → Folder mappings, which also tells you which Plex folders still
-have no mapping.
+have no mapping. Adding or changing a mapping there also shows how many of
+Plex's movies are in the folder you typed.
 
 #### How to find your Plex token
 
@@ -116,13 +119,12 @@ The installer:
 - Saves your configuration to `~/.config/auto-chapter/` (`config.yml` and
   `.env`), outside the app folder, so it survives an update
 - Installs an `auto-chapter` command (a symlink in `~/.local/bin`, on PATH
-  for every shell -- not a shell alias, so it works right away)
+  for every shell -- not a shell alias)
 - Asks if you want to start it now
 
-Whether you say yes or no, the command is ready immediately -- no need to
-open a new terminal or reload your shell config (unless the installer
-specifically tells you `~/.local/bin` isn't on your PATH yet, which it will
-handle with its own instructions if so). Just type:
+Usually the command works right away. If your terminal doesn't know it yet,
+the installer says what to do: open a new terminal, or add the one line it
+shows to your shell config. Then just type:
 
 ```
 auto-chapter
