@@ -13,7 +13,7 @@ from rich.markup import escape
 
 from auto_chapter.config import Config, ConfigError, default_config_path
 from auto_chapter.console import console
-from auto_chapter.detector.ffmpeg import ffmpeg_filter_problem
+from auto_chapter.detector.ffmpeg import ffmpeg_decoder_problem, ffmpeg_filter_problem
 from auto_chapter.logging_setup import setup_logging
 from auto_chapter.menu import run_menu
 from auto_chapter.orchestrator import Orchestrator
@@ -84,6 +84,11 @@ def _check_required_tools() -> None:
 
     if missing or filter_problem:
         raise typer.Exit(code=1)
+
+    # A warning only: movies in other formats still work.
+    decoder_problem = ffmpeg_decoder_problem()
+    if decoder_problem:
+        console.print(f"[yellow]{escape(decoder_problem)}[/yellow]")
 
 
 def _load_config(config_path: Path | None) -> Config:

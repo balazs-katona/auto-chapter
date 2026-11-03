@@ -65,6 +65,63 @@ def ffmpeg_filter_problem() -> str | None:
     return None
 
 
+# Most movies are H.264 or HEVC. Some builds can't decode them -- Fedora's
+# ffmpeg-free is the known case (the full ffmpeg comes from RPM Fusion; on
+# openSUSE from Packman). Every detection would then fail.
+REQUIRED_DECODERS = {"h264": "H.264", "hevc": "HEVC"}
+
+# One line of `ffmpeg -codecs`: flags ("D" first = decoding supported), name,
+# description, then "(decoders: ...)" when a decoder has another name.
+# " DEV.LS h264   H.264 / AVC ... (decoders: h264 h264_qsv h264_cuvid) (encoders: ...)"
+_CODEC_LINE = re.compile(r"^\s*([D.])[E.][VASDT.]\S*\s+(\S+)\s*(.*)$")
+_DECODER_LIST = re.compile(r"\(decoders: ([^)]*)\)")
+# Decoders that need particular graphics hardware; a codec with only these is
+# no use on most computers.
+_HARDWARE_DECODER = re.compile(r"_(cuvid|qsv|v4l2m2m|amf|mediacodec|rkmpp|mmal|oh)$")
+
+
+def ffmpeg_decoder_problem() -> str | None:
+    """Ask ffmpeg whether it can decode H.264 and HEVC video. Returns None if
+    it can (or if its answer can't be read), otherwise a ready-to-show
+    sentence. A warning, not a stop: movies in other formats still work."""
+    try:
+        proc = subprocess.run(
+            ["ffmpeg", "-hide_banner", "-codecs"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=15,
+            env=tool_env(),
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if proc.returncode != 0:
+        return None
+
+    usable: dict[str, bool] = {}
+    for line in proc.stdout.splitlines():
+        m = _CODEC_LINE.match(line)
+        if not m:
+            continue
+        flag, name, rest = m.groups()
+        listed = _DECODER_LIST.search(rest)
+        decoders = listed.group(1).split() if listed else [name]
+        usable[name] = flag == "D" and any(not _HARDWARE_DECODER.search(d) for d in decoders)
+    if not usable:
+        # Not one codec line recognised: the output looks different from what
+        # this parser knows -- don't claim anything is missing.
+        return None
+    missing = [label for name, label in REQUIRED_DECODERS.items() if not usable.get(name)]
+    if not missing:
+        return None
+    return (
+        f"This ffmpeg can't decode {' / '.join(missing)} video, so movies in that "
+        "format can't get chapters. Install an ffmpeg that can (on Fedora it comes "
+        "from RPM Fusion, on openSUSE from Packman)."
+    )
+
+
 def run_ffmpeg(args: list[str], timeout: float | None = None) -> FFmpegResult:
     """Run ffmpeg with given args. Returns captured output.
 

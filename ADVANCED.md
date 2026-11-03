@@ -20,7 +20,10 @@ asks once. On other systems it tells you what to install. The programs:
 
 - **uv** (Python package manager; it also brings Python if needed)
 - **ffmpeg** and **ffprobe**, FFmpeg **4.4 or newer**: the detection needs
-  the `blackdetect` and `scdet` filters (the installer and the app check them)
+  the `blackdetect` and `scdet` filters (the installer and the app check them).
+  It must also decode H.264 and HEVC video, which most movies use; the
+  installer and the app warn if it can't. Fedora's own `ffmpeg-free` may not:
+  the full ffmpeg is in RPM Fusion (on openSUSE: Packman).
 - **mkvmerge** and **mkvextract** (from mkvtoolnix)
 - **timeout** (GNU coreutils, already on practically every Linux system)
 

@@ -258,6 +258,16 @@ else
     echo "Please fix this and run this script again."
     exit 1
 fi
+# Can it decode H.264 / HEVC (most movies)? A warning only, like in the app.
+decoder_problem=$(uv run python -c "
+from auto_chapter.detector.ffmpeg import ffmpeg_decoder_problem
+print(ffmpeg_decoder_problem() or 'OK')
+" 2>/dev/null) || decoder_problem=""
+if [ "$decoder_problem" = "OK" ]; then
+    ok "ffmpeg can decode H.264 and HEVC video"
+elif [ -n "$decoder_problem" ]; then
+    warn "$decoder_problem"
+fi
 
 # --- 3. Configuration ---
 mkdir -p "$CONF_DIR"

@@ -13,6 +13,7 @@ def _no_real_ffmpeg(monkeypatch) -> None:
     """The tests below are about which tools are on PATH; they must not depend on
     (or run) the ffmpeg of the machine they happen to run on."""
     monkeypatch.setattr("auto_chapter.cli.ffmpeg_filter_problem", lambda: None)
+    monkeypatch.setattr("auto_chapter.cli.ffmpeg_decoder_problem", lambda: None)
 
 
 def test_passes_silently_when_everything_is_on_path(monkeypatch) -> None:
@@ -177,3 +178,19 @@ def test_a_missing_token_points_to_the_env_file(tmp_path, capsys) -> None:
         "PLEX_TOKEN=<your token> into that file." in shown
     )
     assert "paths:" not in shown  # no hint that sends the user to config.yml
+
+
+def test_an_ffmpeg_without_h264_hevc_decoders_is_a_warning_not_a_stop(
+    monkeypatch, capsys
+) -> None:
+    """Fedora's ffmpeg-free: every H.264 / HEVC movie would fail at detection.
+    Said at the start; movies in other formats still work, so the app goes on."""
+    monkeypatch.setattr("auto_chapter.cli.shutil.which", lambda _tool: "/usr/bin/fake")
+    monkeypatch.setattr(
+        "auto_chapter.cli.ffmpeg_decoder_problem",
+        lambda: "This ffmpeg can't decode H.264 / HEVC video, ...",
+    )
+
+    _check_required_tools()  # must not raise
+
+    assert "can't decode H.264 / HEVC video" in capsys.readouterr().out

@@ -1,6 +1,6 @@
 # auto-chapter
 
-**v0.4.6**
+**v0.4.7**
 
 Automatic chapter marker generation for MKV movies on a Plex server.
 
@@ -38,9 +38,12 @@ details for advanced users.
 
 - Linux with systemd. On Debian/Ubuntu, Arch, Fedora and openSUSE (and
   systems based on them) the installer can install the tools below for you.
+  Tested on EndeavourOS and Ubuntu. Fedora and openSUSE should work but
+  haven't been tested yet -- reports are welcome.
 - [uv](https://docs.astral.sh/uv/) -- it also provides Python 3.13+ if your
   system has none
-- ffmpeg, ffprobe (FFmpeg 4.4 or newer: the detection needs the `blackdetect` and `scdet` filters)
+- ffmpeg, ffprobe (FFmpeg 4.4 or newer: the detection needs the `blackdetect` and `scdet` filters;
+  it must decode H.264 and HEVC video -- the installer and the app warn if it can't)
 - mkvmerge, mkvextract (from mkvtoolnix)
 - A Plex Media Server with an auth token
 - The movie files reachable from this computer: on its own disk, or a NAS
