@@ -33,7 +33,7 @@ folders mapped is fine too -- add them later from the app's Settings menu.
 When done, type `auto-chapter` from any directory to start.
 
 **INSTALL.md**: installation and first use, step by step. **ADVANCED.md**:
-details for advanced users.
+details for advanced users. **CHANGELOG.md**: what changed in each version.
 
 ## Requirements
 
