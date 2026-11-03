@@ -9,6 +9,15 @@ chapter markers into the MKV files via mkvmerge. The whole file is rewritten
 in one pass: that is the most reliable way to make the new files work well
 on any device.
 
+## Contents
+
+- [Quick Start](#quick-start)
+- [Requirements](#requirements)
+- [Your files](#your-files)
+- [What it does](#what-it-does)
+- [Features](#features)
+- [Development](#development)
+
 ## Quick Start
 
 ```bash
