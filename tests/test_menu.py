@@ -2224,3 +2224,56 @@ def test_a_local_folders_address_is_used_as_its_path(
 
     assert mapping_flow.config.paths[0].local == "/home/user/Árvácska filmek/"
     assert "network address" not in capsys.readouterr().out
+
+
+# --- Ctrl+C in Generate / Update with one movie --------------------------------
+#
+# Owner's 1.0.0 test: with one movie picked, the first Ctrl+C said "Will stop
+# cleanly after the current movie" -- that is, after the only movie: nothing.
+
+
+def _ctrl_c_handlers(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    used: list[str] = []
+
+    def recorder(name: str):  # type: ignore[no-untyped-def]
+        @contextmanager
+        def handler() -> Iterator[None]:
+            used.append(name)
+            yield
+
+        return handler
+
+    _RecordingToggle.instances = []
+    monkeypatch.setattr(menu, "cancellable", recorder("at once"))
+    monkeypatch.setattr(menu, "batch_interrupt", recorder("after this movie"))
+    monkeypatch.setattr(menu, "ShutdownToggle", _RecordingToggle)
+    monkeypatch.setattr(
+        menu,
+        "_process_one",
+        lambda mv, _orch: ProcessingResult(movie=mv, chapters=[], written=True),
+    )
+    return used
+
+
+def test_one_movie_stops_at_the_first_ctrl_c(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    used = _ctrl_c_handlers(monkeypatch)
+
+    menu._run_batch([_movie("Gladiátor", True)], SimpleNamespace())
+
+    assert used == ["at once"]
+    out = capsys.readouterr().out
+    assert "Press Ctrl+C to cancel. The original file is never damaged." in out
+    assert "twice" not in out
+
+
+def test_several_movies_keep_the_two_step_ctrl_c(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    used = _ctrl_c_handlers(monkeypatch)
+
+    menu._run_batch([_movie("A", True), _movie("B", True)], SimpleNamespace())
+
+    assert used == ["after this movie"]
+    assert "twice for immediate stop" in capsys.readouterr().out

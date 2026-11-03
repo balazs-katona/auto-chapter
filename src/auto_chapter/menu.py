@@ -277,7 +277,12 @@ def _run_batch(movies: list[Movie], orch: Orchestrator) -> list[Movie]:
     batch finishes successfully. Pressing 's' again cancels the schedule.
 
     Returns the list of movies that were successfully written.
+
+    With one movie, Ctrl+C works as in Find by title: the first press stops
+    at once. "Stop after the current movie" would mean finishing the only
+    movie, so the first press did nothing useful (owner's 1.0.0 test).
     """
+    single = len(movies) == 1
     shutdown_toggle = ShutdownToggle()
 
     def on_shutdown_toggle(scheduled: bool) -> None:
@@ -307,11 +312,11 @@ def _run_batch(movies: list[Movie], orch: Orchestrator) -> list[Movie]:
         # from whatever prompt runs next.
         can_toggle = shutdown_toggle.start(on_shutdown_toggle)
 
-        console.print(f"\n{CTRL_C_TIP_BATCH}")
+        console.print(f"\n{CTRL_C_TIP_SINGLE if single else CTRL_C_TIP_BATCH}")
         if can_toggle:
-            console.print(SHUTDOWN_TIP_BATCH)
+            console.print(SHUTDOWN_TIP_SINGLE if single else SHUTDOWN_TIP_BATCH)
 
-        with keep_awake(), batch_interrupt():
+        with keep_awake(), (cancellable() if single else batch_interrupt()):
             for i, mv in enumerate(movies, start=1):
                 if stop_requested():
                     stopped_early = True
