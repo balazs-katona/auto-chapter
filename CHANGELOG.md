@@ -3,7 +3,7 @@
 The changes in each version of auto-chapter. Version numbers follow
 [Semantic Versioning](https://semver.org/).
 
-## 1.0.0 — release date
+## 1.0.0 — 2026-11-08
 
 First public release.
 
