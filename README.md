@@ -21,8 +21,13 @@ on any device.
 
 ## Quick Start
 
+Download `auto-chapter-vX.Y.Z.zip` from the
+[Releases page](https://github.com/balazs-katona/auto-chapter/releases/latest)
+(not the "Source code" files), then:
+
 ```bash
-chmod +x install.sh
+unzip auto-chapter-vX.Y.Z.zip
+cd auto-chapter-vX.Y.Z
 ./install.sh
 ```
 

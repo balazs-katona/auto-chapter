@@ -33,16 +33,19 @@ of anything you can't replace, and try it on a few movies first.
 
 ## Install
 
-1. Unpack the zip and go into its folder:
+1. Download `auto-chapter-vX.Y.Z.zip` from the
+   [Releases page](https://github.com/balazs-katona/auto-chapter/releases/latest)
+   (not the "Source code" files).
+2. Unpack the zip and go into its folder:
    ```
    unzip auto-chapter-vX.Y.Z.zip
    cd auto-chapter-vX.Y.Z
    ```
-2. Start the installer:
+3. Start the installer:
    ```
    ./install.sh
    ```
-3. Answer its questions:
+4. Answer its questions:
    - **Install them now?** -- only if a program is missing. Type `y`.
    - **Plex server** -- its address, for example `192.168.1.100:32400`
    - **Plex token** -- see [Finding your Plex token](#finding-your-plex-token)
@@ -121,6 +124,8 @@ Everything you set in the installer can be changed in the app's **Settings**.
 
 ## Updating to a new version
 
+Download the new `auto-chapter-vX.Y.Z.zip` from the
+[Releases page](https://github.com/balazs-katona/auto-chapter/releases/latest).
 Your settings are kept outside the app folder, so just replace the folder:
 ```
 rm -rf auto-chapter-vOLD
