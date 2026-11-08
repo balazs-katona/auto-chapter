@@ -47,8 +47,9 @@ folder may have a different path. A folder mapping connects the two:
 - Plex runs on this computer: both paths are the same (for example
   `/home/user/Movies/`). Answer "On this machine" and every folder is mapped
   for you.
-- Plex runs on a NAS: Plex sees `/share/Multimedia/Movies/`, this computer
-  sees the mounted share as `/mnt/nas/Movies/`.
+- Plex runs on another machine, for example a NAS: Plex sees
+  `/share/Multimedia/Movies/`, this computer sees the mounted share as
+  `/mnt/nas/Movies/`.
 
 When you add or change a mapping, the installer and the app compare the
 folder you typed with every movie Plex has in that folder, and show how many

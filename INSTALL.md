@@ -23,7 +23,8 @@ You need:
   https://github.com/balazs-katona/auto-chapter/issues
 - a Plex Media Server that you manage
 - your movie folders reachable from this computer: on its own disk, or on a
-  NAS share mounted here (see [Mounting a network share](#mounting-a-network-share))
+  network share mounted here, for example from a NAS (see
+  [Mounting a network share](#mounting-a-network-share))
 
 The installer installs the other programs it needs (ffmpeg, mkvtoolnix, uv).
 It asks first, and asks for your password.
@@ -77,10 +78,10 @@ https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-ple
 
 ## Mounting a network share
 
-If your movies are on a NAS, they have to be a normal folder on this
-computer. The address your file manager shows (`smb://nas.local/Multimedia`)
-is not a folder, so mount the share first. For an SMB (Windows/Samba) share,
-in a terminal:
+If your movies are on another machine (for example a NAS), they have to be
+a normal folder on this computer. The address your file manager shows
+(`smb://nas.local/Multimedia`) is not a folder, so mount the share first.
+For an SMB (Windows/Samba) share, in a terminal:
 
 1. Install the package `cifs-utils` (Ubuntu/Debian: `sudo apt install
    cifs-utils`, Fedora: `sudo dnf install cifs-utils`, Arch: `sudo pacman -S

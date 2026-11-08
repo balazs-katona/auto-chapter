@@ -22,8 +22,8 @@ scene, or straight to the end credits.
   (VLC, mpv, Kodi) show them too.
 - **Easy**: an installer sets everything up, then a numbered menu does the
   rest.
-- **Your setup**: auto-chapter runs on Linux; Plex can run anywhere -- on
-  this computer, a NAS or another machine -- as long as its movie folders are
+- **Your setup**: auto-chapter runs on Linux; Plex can run on this computer
+  or on another machine (for example a NAS), as long as its movie folders are
   reachable from here.
 
 ## Contents
@@ -71,8 +71,8 @@ details for advanced users. **CHANGELOG.md**: what changed in each version.
   it must decode H.264 and HEVC video -- the installer and the app warn if it can't)
 - mkvmerge, mkvextract (from mkvtoolnix)
 - A Plex Media Server with an auth token
-- The movie files reachable from this computer: on its own disk, or a NAS
-  share mounted here
+- The movie files reachable from this computer: on its own disk, or a
+  network share mounted here (for example from a NAS)
 
 ## Your files
 
