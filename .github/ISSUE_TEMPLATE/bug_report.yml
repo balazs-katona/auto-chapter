@@ -41,11 +41,11 @@ body:
   - type: dropdown
     id: plex
     attributes:
-      label: Where does Plex Media Server run?
+      label: Where is Plex running?
+      description: The same question the installer asks.
       options:
-        - On the computer auto-chapter runs on
-        - On a NAS
-        - On another computer
+        - On this machine (the one auto-chapter runs on)
+        - On another machine (for example a NAS)
   - type: dropdown
     id: movies
     attributes:
