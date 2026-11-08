@@ -34,6 +34,7 @@ scene, or straight to the end credits.
 - [What it does](#what-it-does)
 - [Features](#features)
 - [Development](#development)
+- [Contributing](#contributing)
 - [License](#license)
 
 ## Quick Start
@@ -177,6 +178,11 @@ uv run pytest                  # run tests
 uv run ruff check src tests    # lint
 uv run mypy src                # type check
 ```
+
+## Contributing
+
+Bug reports, test reports from other Linux systems and ideas are welcome:
+see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

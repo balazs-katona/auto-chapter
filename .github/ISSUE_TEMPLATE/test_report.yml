@@ -1,0 +1,48 @@
+name: Test report
+description: You tried auto-chapter on a Linux system it hasn't been tested on yet (for example Fedora or openSUSE)
+labels: [test report]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        auto-chapter has been tested on EndeavourOS and Ubuntu. Reports from other systems help a lot -- a short "it works" is useful too.
+        **Never paste your Plex token.**
+  - type: input
+    id: system
+    attributes:
+      label: Linux system
+      placeholder: "Fedora 41"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: auto-chapter version
+      placeholder: "1.0.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: result
+    attributes:
+      label: Result
+      options:
+        - Everything worked
+        - It worked, with some problems
+        - It didn't work
+    validations:
+      required: true
+  - type: checkboxes
+    id: tried
+    attributes:
+      label: What did you try?
+      options:
+        - label: The installer installed the missing programs
+        - label: The installer set up the Plex connection and the folders
+        - label: Generate wrote chapters into at least one movie
+        - label: The chapters show up in Plex
+  - type: textarea
+    id: notes
+    attributes:
+      label: Problems or notes
+      description: Anything that went wrong or was unclear, with what the terminal printed.
+      render: text

@@ -1,0 +1,71 @@
+name: Bug report
+description: Something doesn't work as it should
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this.
+        **Never paste your Plex token** -- remove it, and anything else you'd rather keep private, before you submit.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What went wrong, and what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: What did you do?
+      description: The menu choices or commands just before the problem.
+      placeholder: |
+        1. Main menu → 1) Generate Auto Chapters
+        2. ...
+  - type: input
+    id: version
+    attributes:
+      label: auto-chapter version
+      description: Shown at the top of the menu.
+      placeholder: "1.0.0"
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: Linux system
+      description: The distribution and its version, on the computer auto-chapter runs on.
+      placeholder: "Ubuntu 24.04"
+    validations:
+      required: true
+  - type: dropdown
+    id: plex
+    attributes:
+      label: Where does Plex run?
+      options:
+        - On the same computer
+        - On a NAS
+        - On another computer
+  - type: dropdown
+    id: movies
+    attributes:
+      label: Where are the movie files?
+      options:
+        - On this computer's own disk
+        - On a network share mounted here (SMB / CIFS)
+        - On a network share mounted here (NFS)
+        - Somewhere else
+  - type: textarea
+    id: output
+    attributes:
+      label: What the app or the installer printed
+      description: Copy the text from the terminal.
+      render: text
+  - type: textarea
+    id: log
+    attributes:
+      label: Log file (optional)
+      description: |
+        `~/.config/auto-chapter/logs/auto-chapter.log` -- the last few lines are usually enough.
+        It can contain movie names and folder paths.
+      render: text
