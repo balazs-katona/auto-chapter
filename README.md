@@ -5,20 +5,24 @@
 **Chapters for the movies on your Plex server, made automatically.**
 
 Most movie files come without chapters, so in Plex all you can do is drag
-the timeline. auto-chapter finds the scene changes in your MKV movies and
-writes chapters into the files. On any Plex player you can then jump from
-scene to scene, or straight to the end credits.
+the timeline. auto-chapter finds the scene changes in the MKV movies on your
+Plex Media Server with its own scene detection method, and writes chapter
+markers into the files. On any Plex player you can then jump from scene to
+scene, or straight to the end credits.
 
 ![Chapters made by auto-chapter, in the Plex player](docs/images/plex-chapters.jpg)
 
-- **Automatic**: it finds the fades to black and the scene changes by itself.
+- **Its own detection method**: it finds natural scene boundaries by
+  itself -- a fade to black first, the strongest visual cut where there is
+  none -- and keeps the chapters evenly spread through the movie.
 - **End Credits chapter**: wherever Plex has found the end credits.
 - **Safe**: nothing is re-encoded, and the original file is replaced only
   when the new one is complete and checked.
 - **Easy**: an installer sets everything up, then a numbered menu does the
   rest.
-- **Your setup**: movies on this computer or on a NAS share mounted here.
-  Runs on Linux.
+- **Your setup**: auto-chapter runs on Linux; Plex can run anywhere -- on
+  this computer, a NAS or another machine -- as long as its movie folders are
+  reachable from here.
 
 ## Contents
 
@@ -87,7 +91,17 @@ your files" in ADVANCED.md.
 
 ## What it does
 
-FFmpeg finds the scene changes (its `blackdetect` and `scdet` filters), and
+**How it finds the chapters.** auto-chapter has its own detection method.
+It goes through the movie step by step: each new chapter is searched for in
+the five minutes that start at least five minutes after the previous one.
+There it looks for a fade to black first, because that is where a scene ends
+on purpose; if there is none, it takes the strongest visual cut. So the
+chapters fall on natural scene boundaries and are spread evenly through the
+movie. The search stops where Plex has found the end credits, and the last
+chapter is End Credits. (Without Plex End Credits it stops 15 minutes before
+the end, so no chapter lands in the credits.)
+
+FFmpeg does the picture analysis (its `blackdetect` and `scdet` filters), and
 mkvmerge writes the chapters into the MKV file. The whole file is rewritten in
 one pass: that is the most reliable way to make the new files work well on
 any device.
