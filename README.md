@@ -18,6 +18,8 @@ scene, or straight to the end credits.
 - **End Credits chapter**: wherever Plex has found the end credits.
 - **Safe**: nothing is re-encoded, and the original file is replaced only
   when the new one is complete and checked.
+- **Chapters in the file**: they stay in the MKV file, so other players
+  (VLC, mpv, Kodi) show them too.
 - **Easy**: an installer sets everything up, then a numbered menu does the
   rest.
 - **Your setup**: auto-chapter runs on Linux; Plex can run anywhere -- on
