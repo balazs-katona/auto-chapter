@@ -2,12 +2,23 @@
 
 **v1.0.0**
 
-Automatic chapter marker generation for MKV movies on a Plex server.
+**Chapters for the movies on your Plex server, made automatically.**
 
-Detects scene transitions using FFmpeg (blackdetect + scdet) and writes
-chapter markers into the MKV files via mkvmerge. The whole file is rewritten
-in one pass: that is the most reliable way to make the new files work well
-on any device.
+Most movie files come without chapters, so in Plex all you can do is drag
+the timeline. auto-chapter finds the scene changes in your MKV movies and
+writes chapters into the files. On any Plex player you can then jump from
+scene to scene, or straight to the end credits.
+
+![Chapters made by auto-chapter, in the Plex player](docs/images/plex-chapters.jpg)
+
+- **Automatic**: it finds the fades to black and the scene changes by itself.
+- **End Credits chapter**: wherever Plex has found the end credits.
+- **Safe**: nothing is re-encoded, and the original file is replaced only
+  when the new one is complete and checked.
+- **Easy**: an installer sets everything up, then a numbered menu does the
+  rest.
+- **Your setup**: movies on this computer or on a NAS share mounted here.
+  Runs on Linux.
 
 ## Contents
 
@@ -76,17 +87,14 @@ your files" in ADVANCED.md.
 
 ## What it does
 
+FFmpeg finds the scene changes (its `blackdetect` and `scdet` filters), and
+mkvmerge writes the chapters into the MKV file. The whole file is rewritten in
+one pass: that is the most reliable way to make the new files work well on
+any device.
+
 Once running, `auto-chapter` gives you a numbered menu:
 
-```
-Main menu
-  0) Quit
-  1) Generate Auto Chapters
-  2) Update Auto Chapters with missing Plex End Credits
-  3) Find a movie by title
-  4) Settings
-  5) About
-```
+![The auto-chapter menu and its Generate screen](docs/images/menu.svg)
 
 - **Generate** scans your mapped folders, shows how many movies need chapters,
   and processes them in alphabetical order -- **only the movies with Plex
@@ -109,6 +117,11 @@ Main menu
   minimum movie length, the chapter threshold (from how many chapters on a
   movie is assumed to have a useful chapter list already), and your Plex
   connection.
+
+For each movie it shows the chapters it found, then writes them into the file.
+This is The Matrix (1999), the movie in the picture at the top:
+
+![The chapters auto-chapter found in The Matrix](docs/images/chapters.svg)
 
 While movies are being processed, `Ctrl+C` once finishes the current movie
 and then stops, twice stops at once. Press `s` to switch the computer off
