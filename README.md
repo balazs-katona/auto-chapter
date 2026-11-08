@@ -94,20 +94,18 @@ your files" in ADVANCED.md.
 
 ## What it does
 
-**How it finds the chapters.** auto-chapter has its own detection method.
-It goes through the movie step by step: each new chapter is searched for in
-the five minutes that start at least five minutes after the previous one.
-There it looks for a fade to black first, because that is where a scene ends
-on purpose; if there is none, it takes the strongest visual cut. So the
-chapters fall on natural scene boundaries and are spread evenly through the
-movie. The search stops where Plex has found the end credits, and the last
-chapter is End Credits. (Without Plex End Credits it stops 15 minutes before
-the end, so no chapter lands in the credits.)
+**How it finds the chapters** (auto-chapter's own method):
 
-FFmpeg does the picture analysis (its `blackdetect` and `scdet` filters), and
-mkvmerge writes the chapters into the MKV file. The whole file is rewritten in
-one pass: that is the most reliable way to make the new files work well on
-any device.
+1. The first chapter is the start of the movie.
+2. From minute 5 on, it examines the movie five minutes at a time. In each
+   stretch it looks for a fade to black, because that is where a scene ends
+   on purpose; if there is none, it takes the strongest visual cut. What it
+   finds there is the next chapter.
+3. From that chapter it jumps five minutes ahead and examines the next
+   stretch, and so on.
+4. If Plex has found the end credits, the search stops five minutes before
+   them, and the last chapter is End Credits. If not, it stops 15 minutes
+   before the end of the movie, so no chapter lands in the credits.
 
 Once running, `auto-chapter` gives you a numbered menu:
 
