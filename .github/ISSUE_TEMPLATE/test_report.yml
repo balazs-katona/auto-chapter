@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         auto-chapter has been tested on EndeavourOS and Ubuntu. Reports from other systems help a lot -- a short "it works" is useful too.
-        **Never paste your Plex token.**
+        **Never paste your Plex token** (it is in `~/.config/auto-chapter/.env`).
   - type: input
     id: system
     attributes:
@@ -36,11 +36,12 @@ body:
     attributes:
       label: What did you try?
       options:
-        - label: The installer installed the missing programs
+        - label: The installer found or installed the programs it needs (ffmpeg, mkvtoolnix, uv)
+        - label: No FFmpeg decoder warning (from the installer or the app)
         - label: The installer set up the Plex connection and the folders
         - label: auto-chapter found the chapters in a movie (it showed the chapter table)
         - label: auto-chapter wrote the chapters into the movie file
-        - label: The chapters show up in Plex
+        - label: The chapters show up in Plex (after Plex has re-read the file, which can take a few minutes)
   - type: textarea
     id: notes
     attributes:

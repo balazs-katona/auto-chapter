@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         Thanks for taking the time to report this.
-        **Never paste your Plex token** -- remove it, and anything else you'd rather keep private, before you submit.
+        **Never paste your Plex token** (it is in `~/.config/auto-chapter/.env`). Remove anything else you'd rather keep private before you submit.
   - type: textarea
     id: what-happened
     attributes:
@@ -38,6 +38,12 @@ body:
       placeholder: "Ubuntu 24.04"
     validations:
       required: true
+  - type: input
+    id: ffmpeg
+    attributes:
+      label: FFmpeg version (optional)
+      description: The first line of `ffmpeg -version`.
+      placeholder: "ffmpeg version 7.1.1"
   - type: dropdown
     id: plex
     attributes:
@@ -67,6 +73,6 @@ body:
     attributes:
       label: Log file (optional)
       description: |
-        `~/.config/auto-chapter/logs/auto-chapter.log` -- the last few lines are usually enough.
-        It can contain movie names and folder paths.
+        Normally `~/.config/auto-chapter/logs/auto-chapter.log` -- the last few lines are usually enough.
+        It can contain movie names, folder paths and your Plex server's address.
       render: text
