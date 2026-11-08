@@ -41,20 +41,21 @@ body:
   - type: dropdown
     id: plex
     attributes:
-      label: Where does Plex run?
+      label: Where does Plex Media Server run?
       options:
-        - On the same computer
+        - On the computer auto-chapter runs on
         - On a NAS
         - On another computer
   - type: dropdown
     id: movies
     attributes:
-      label: Where are the movie files?
+      label: How does auto-chapter reach the movie files?
+      description: auto-chapter reads and writes the movie files themselves, so they must be reachable from the computer it runs on.
       options:
-        - On this computer's own disk
-        - On a network share mounted here (SMB / CIFS)
-        - On a network share mounted here (NFS)
-        - Somewhere else
+        - They are on the disk of the computer auto-chapter runs on
+        - Through a network share mounted on that computer (SMB / CIFS)
+        - Through a network share mounted on that computer (NFS)
+        - Some other way
   - type: textarea
     id: output
     attributes:

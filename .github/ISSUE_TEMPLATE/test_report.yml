@@ -38,7 +38,8 @@ body:
       options:
         - label: The installer installed the missing programs
         - label: The installer set up the Plex connection and the folders
-        - label: Generate wrote chapters into at least one movie
+        - label: auto-chapter found the chapters in a movie (it showed the chapter table)
+        - label: auto-chapter wrote the chapters into the movie file
         - label: The chapters show up in Plex
   - type: textarea
     id: notes
