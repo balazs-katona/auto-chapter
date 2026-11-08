@@ -107,6 +107,9 @@ your files" in ADVANCED.md.
    them, and the last chapter is End Credits. If not, it stops 15 minutes
    before the end of the movie, so no chapter lands in the credits.
 
+The aim is chapters spread evenly through the movie, about as many as an
+original chapter list would have.
+
 Once running, `auto-chapter` gives you a numbered menu:
 
 ![The auto-chapter menu and its Generate screen](docs/images/menu.svg)
