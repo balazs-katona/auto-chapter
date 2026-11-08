@@ -1,6 +1,6 @@
 # auto-chapter
 
-**v1.0.0**
+**v1.0.1**
 
 **Chapters for the movies on your Plex server, made automatically.**
 

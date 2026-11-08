@@ -3,6 +3,18 @@
 The changes in each version of auto-chapter. Version numbers follow
 [Semantic Versioning](https://semver.org/).
 
+## 1.0.1 — 2026-11-08
+
+Documentation only: the program is the same as in 1.0.0, so there is no
+need to update.
+
+- Added: screenshots in the README (chapters in the Plex player, the menu,
+  the chapter list of a real movie) and the detection method in four steps
+- Added: forms for bug reports, test reports and ideas, and CONTRIBUTING.md
+- Changed: clearer wording -- auto-chapter runs on Linux, Plex on this
+  computer or on another machine; the movie files on this computer's disk
+  or on a mounted network share
+
 ## 1.0.0 — 2026-11-08
 
 First public release.
