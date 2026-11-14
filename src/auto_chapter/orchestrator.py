@@ -211,6 +211,9 @@ class Orchestrator:
                 chapters=len(detection.chapters),
                 elapsed_seconds=round(elapsed, 1),
             )
+        elif force_stopped():
+            # The user's own stop, not a failure (until 1.1.1 logged as one).
+            log.info("write_stopped", title=movie.display)
         else:
             log.error("write_failed", title=movie.display, error=result.error)
 

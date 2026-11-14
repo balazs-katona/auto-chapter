@@ -42,7 +42,7 @@ from rich.progress import (
     TimeElapsedColumn,
 )
 
-from auto_chapter.batch_control import register_subprocess
+from auto_chapter.batch_control import force_stopped, register_subprocess
 from auto_chapter.chapter.xml import to_xml
 from auto_chapter.console import console
 from auto_chapter.logging_setup import get_logger
@@ -56,6 +56,9 @@ log = get_logger(__name__)
 # can remove leftovers from a killed run without touching anyone else's file.
 TEMP_OUTPUT_SUFFIX = ".autochapter.tmp"
 CHAPTER_XML_SUFFIX = ".autochapter.xml"
+
+
+STOPPED_ERROR = "stopped before the file was replaced"
 
 
 @dataclass(frozen=True, slots=True)
@@ -220,8 +223,21 @@ def write_chapters_and_remux(
             # Final update: 100%
             progress.update(task_id, completed=file_size)
 
-        # mkvmerge: 0 = ok, 1 = warnings (still ok), 2 = error
-        if proc.returncode >= 2:
+        # A stop (second Ctrl+C) terminates mkvmerge: its file is incomplete,
+        # however big it already is. Never let it replace the original.
+        if force_stopped():
+            return RemuxResult(success=False, error=STOPPED_ERROR)
+
+        # mkvmerge: 0 = ok, 1 = warnings (still ok), 2 = error. Killed by a
+        # signal = negative: until 1.1.1 only ">= 2" was checked, so a killed
+        # mkvmerge's partial file (over 90 % of the size) would have replaced
+        # the movie.
+        if proc.returncode not in (0, 1):
+            if proc.returncode < 0:
+                return RemuxResult(
+                    success=False,
+                    error=f"mkvmerge was stopped (signal {-proc.returncode}).",
+                )
             return RemuxResult(
                 success=False,
                 error=f"mkvmerge failed: {_mkvmerge_problem(stdout, stderr)[:300]}",
@@ -240,6 +256,11 @@ def write_chapters_and_remux(
                 success=False,
                 error=f"output suspiciously small ({temp_size} vs {file_size})",
             )
+
+        # Last look before the original is touched: a stop requested while the
+        # checks above ran still keeps it.
+        if force_stopped():
+            return RemuxResult(success=False, error=STOPPED_ERROR)
 
         # Atomic replace
         os.replace(temp_output, filepath)

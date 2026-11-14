@@ -145,3 +145,71 @@ def test_a_failed_write_reports_what_mkvmerge_said(
         "mkvmerge failed: Error: The file '/movies/Film.mkv.autochapter.tmp' could not "
         "be opened for writing: open file error."
     )
+
+
+def _nearly_finished_mkvmerge(returncode: int, on_communicate: Any = None) -> Any:
+    """A fake mkvmerge whose output is already 95 % of the movie: big enough to
+    pass the size check, but not the whole movie."""
+
+    class NearlyFinished:
+        def __init__(self) -> None:
+            self.returncode = returncode
+
+        def communicate(self) -> tuple[str, str]:
+            if on_communicate is not None:
+                on_communicate()
+            return "", ""
+
+    def fake_popen(cmd: list[str], **_kwargs: Any) -> Any:
+        Path(cmd[cmd.index("-o") + 1]).write_bytes(b"y" * 950)
+        return NearlyFinished()
+
+    return fake_popen
+
+
+@pytest.fixture
+def no_stop() -> Any:
+    from auto_chapter import batch_control
+
+    batch_control._state.force_stop = False
+    yield batch_control._state
+    batch_control._state.force_stop = False
+
+
+def test_a_killed_mkvmerge_never_replaces_the_movie(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, no_stop: Any
+) -> None:
+    """Owner, 2026-11-14: a stop during writing terminates mkvmerge (exit code
+    -15). Only ">= 2" was a failure, so a partial file over 90 % of the size
+    would have replaced the movie."""
+    movie = tmp_path / "Film.mkv"
+    movie.write_bytes(b"x" * 1000)
+    monkeypatch.setattr(remuxer.subprocess, "Popen", _nearly_finished_mkvmerge(-15))
+    chapters = [Chapter(name="Auto Chapter 1", timestamp=0.0, method=DetectionMethod.START)]
+
+    result = write_chapters_and_remux(movie, chapters, min_free_bytes=0)
+
+    assert not result.success
+    assert movie.read_bytes() == b"x" * 1000
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["Film.mkv"]
+
+
+def test_a_stop_during_writing_keeps_the_original(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, no_stop: Any
+) -> None:
+    """Even if mkvmerge reports success, a stop requested while it ran keeps
+    the original."""
+    movie = tmp_path / "Film.mkv"
+    movie.write_bytes(b"x" * 1000)
+
+    def second_ctrl_c() -> None:
+        no_stop.force_stop = True
+
+    monkeypatch.setattr(remuxer.subprocess, "Popen", _nearly_finished_mkvmerge(0, second_ctrl_c))
+    chapters = [Chapter(name="Auto Chapter 1", timestamp=0.0, method=DetectionMethod.START)]
+
+    result = write_chapters_and_remux(movie, chapters, min_free_bytes=0)
+
+    assert not result.success
+    assert result.error == remuxer.STOPPED_ERROR
+    assert movie.read_bytes() == b"x" * 1000
