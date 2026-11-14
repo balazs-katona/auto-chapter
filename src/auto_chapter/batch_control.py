@@ -16,8 +16,10 @@ and exits cleanly.
 import signal
 import subprocess
 import threading
+import time
 from collections.abc import Iterator
 from contextlib import contextmanager, suppress
+from pathlib import Path
 
 from auto_chapter.console import console
 
@@ -40,6 +42,30 @@ class _BatchState:
             return
         with suppress(Exception):
             proc.terminate()
+        threading.Thread(target=_say_when_slow, args=(proc,), daemon=True).start()
+
+
+# A terminated mkvmerge first sends what it has written to the disk; on a
+# network share that took about a minute (owner, 2026-11-14), and the screen
+# showed nothing. Say so, only when it really takes a while.
+SLOW_EXIT_SECONDS = 2.0
+
+
+def _say_when_slow(proc: "subprocess.Popen[str]", delay: float = SLOW_EXIT_SECONDS) -> None:
+    """After a terminate: tell the user we are waiting, if the tool is not gone soon."""
+    waited = 0.0
+    while waited < delay:
+        if proc.poll() is not None:
+            return
+        time.sleep(0.1)
+        waited += 0.1
+    if proc.poll() is None:
+        args = proc.args if isinstance(proc.args, list) else [str(proc.args)]
+        tool = Path(str(args[0])).name if args else "the tool"
+        console.print(
+            f"[dim]Waiting for {tool} to close the movie file -- on a network "
+            "share this can take a minute.[/dim]"
+        )
 
 
 _state = _BatchState()

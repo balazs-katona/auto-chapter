@@ -194,3 +194,37 @@ def test_context_exit_clears_registered_subprocess():
     proc.wait(timeout=1)
     # After context exit, internal proc ref is cleared
     assert _state._current_proc is None
+
+
+def test_a_tool_slow_to_exit_after_a_stop_is_announced(capsys):
+    """Owner, 2026-11-14: after the stop, mkvmerge took a minute to send the
+    written data to the NAS, and the screen showed nothing."""
+    from auto_chapter.batch_control import _say_when_slow
+
+    # Ignores SIGTERM for a while, like mkvmerge flushing to a network share.
+    proc = subprocess.Popen(
+        ["bash", "-c", "trap '' TERM; sleep 3"], start_new_session=True
+    )
+    proc.args = ["mkvmerge", "-o", "x"]
+    time.sleep(0.3)  # let bash set its trap first
+    try:
+        proc.terminate()
+        _say_when_slow(proc, delay=0.3)
+    finally:
+        proc.kill()
+        proc.wait(timeout=2)
+
+    out = " ".join(capsys.readouterr().out.split())
+    assert "Waiting for mkvmerge to close the movie file" in out
+
+
+def test_a_tool_that_exits_at_once_is_not_announced(capsys):
+    from auto_chapter.batch_control import _say_when_slow
+
+    proc = subprocess.Popen(["sleep", "10"], start_new_session=True)
+    proc.terminate()
+    proc.wait(timeout=2)
+
+    _say_when_slow(proc, delay=0.3)
+
+    assert "Waiting for" not in capsys.readouterr().out
