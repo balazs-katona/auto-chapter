@@ -717,6 +717,24 @@ def test_title_search_offers_auto_chapters_below_the_threshold(
     assert movies[0].has_auto_chapters is True
 
 
+def test_few_auto_chapters_get_the_end_credits_chapter_through_update(
+    monkeypatch, tmp_path: Path
+) -> None:
+    """The short movie Generate leaves alone is Update's, once Plex has
+    found its End Credits (owner asked, 2026-11-14)."""
+    (tmp_path / "Short.mkv").write_bytes(b"fake")
+    movie = _make_fake_movie("/share/Short.mkv", "Short")
+    movie.chapters = _chapters("Auto Chapter 1", "Auto Chapter 2", "Auto Chapter 3")
+    movie.markers = [SimpleNamespace(type="credits")]
+    client = _scan_client(monkeypatch, tmp_path, [movie])
+
+    generate, _ = client.iter_movie_candidates(chapter_threshold=4)
+    update, _ = client.iter_credits_update_candidates()
+
+    assert generate == []
+    assert [m.title for m in update] == ["Short"]
+
+
 def test_other_chapters_below_the_threshold_still_need_auto_chapters(
     monkeypatch, tmp_path: Path
 ) -> None:
