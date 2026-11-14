@@ -88,18 +88,22 @@ def _show_options(
     options: list[str],
     allow_cancel: bool = False,
     cancel_label: str = "Cancel",
+    notes: list[str] | None = None,
 ) -> int:
     """Display a numbered options menu and return the chosen index (1-based).
 
     If allow_cancel is True, prepends a '0) {cancel_label}' option at the top.
     Returns 0 when the cancel option is chosen or when the user presses Ctrl+C / Ctrl+D.
     If allow_cancel is False, Ctrl+C propagates (so the caller can decide to quit).
+    notes: one dim line under each option saying what it does (the main menu).
     """
     console.print(f"\n[bold]{title}[/bold]")
     if allow_cancel:
         console.print(f"  [cyan]0[/cyan]) {cancel_label}")
     for i, opt in enumerate(options, start=1):
         console.print(f"  [cyan]{i}[/cyan]) {opt}")
+        if notes and notes[i - 1]:
+            console.print(f"     [dim]{notes[i - 1]}[/dim]")
 
     start = 0 if allow_cancel else 1
     try:
@@ -1903,6 +1907,15 @@ def run_menu(orch: Orchestrator, config: Config) -> None:
         "Settings",
         "About",
     ]
+    # One line under each item, so the main menu explains itself without the
+    # README (owner, 2026-11-14). Same words as the screens behind them.
+    notes = [
+        "Adds Auto Chapters to the movies that need them",
+        "Adds the End Credits chapter to movies that have Plex End Credits now",
+        "One movie by title, also one with Auto Chapters; asks before writing",
+        "Folder mappings, minimum movie length, chapter threshold, Plex connection",
+        "Version, log file, GitHub page and license",
+    ]
 
     while True:
         if not orch.plex.is_connected:
@@ -1920,7 +1933,7 @@ def run_menu(orch: Orchestrator, config: Config) -> None:
             )
         try:
             choice = _show_options(
-                "Main menu", options, allow_cancel=True, cancel_label="Quit"
+                "Main menu", options, allow_cancel=True, cancel_label="Quit", notes=notes
             )
         except (KeyboardInterrupt, EOFError):
             # Safety net; _show_options with allow_cancel returns 0 instead

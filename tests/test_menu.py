@@ -1788,6 +1788,23 @@ def test_about_names_the_license(prompt: SimpleNamespace, capsys: pytest.Capture
     assert "License:   GPL-3.0-or-later (no warranty, see LICENSE)" in capsys.readouterr().out
 
 
+def test_main_menu_says_what_each_item_does(
+    prompt: SimpleNamespace, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A user who skipped the README can tell Generate from Update (owner, 2026-11-14)."""
+    prompt.answers = [0]
+    plex = SimpleNamespace(is_connected=True, server_name="Test", connection_error=None)
+
+    menu.run_menu(SimpleNamespace(plex=plex), SimpleNamespace(paths=[SimpleNamespace(enabled=True)]))
+
+    lines = [line.strip() for line in capsys.readouterr().out.splitlines()]
+    generate = lines.index("1) Generate Auto Chapters")
+    assert lines[generate + 1] == "Adds Auto Chapters to the movies that need them"
+    about = lines.index("5) About")
+    assert lines[about + 1] == "Version, log file, GitHub page and license"
+    assert lines[lines.index("0) Quit") + 1] == "1) Generate Auto Chapters"
+
+
 def test_main_menu_says_why_plex_is_not_connected(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
