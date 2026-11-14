@@ -3,6 +3,12 @@
 The changes in each version of auto-chapter. Version numbers follow
 [Semantic Versioning](https://semver.org/).
 
+## 1.1.0 — 2026-11-14
+
+- Added: the main menu says in one line under each item what it does, so
+  it is clear without reading the documentation
+- Added: the tests run automatically on GitHub for every change
+
 ## 1.0.1 — 2026-11-08
 
 Documentation only: the program is the same as in 1.0.0, so there is no
