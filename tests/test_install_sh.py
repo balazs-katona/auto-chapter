@@ -513,3 +513,19 @@ def test_the_launcher_falls_back_to_uv_by_name(tmp_path: Path) -> None:
     )  # fmt: skip
 
     assert done.stdout.startswith("by name: run auto-chapter")
+
+
+@pytest.mark.parametrize(
+    ("token", "accepted"),
+    [
+        ("AbCdEf1234GhIj5678Kl", True),
+        ("AbCd-Ef12_34GhIj56Kl", True),  # Plex tokens can hold - and _
+        ("http://plex:32400/?X-Plex-Token=AbCdEf1234GhIj5678Kl", False),
+        ("AbCdEf1234 GhIj5678Kl", False),
+        ("short", False),
+    ],
+)
+def test_the_installer_knows_a_plex_token(token: str, accepted: bool) -> None:
+    script = f'{_bash_function("looks_like_token")}\nlooks_like_token "$1"\n'
+    result = subprocess.run(["bash", "-c", script, "bash", token], check=False)
+    assert (result.returncode == 0) is accepted

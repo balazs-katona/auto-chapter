@@ -1,7 +1,7 @@
 [project]
 name = "auto-chapter"
 version = "1.1.2"
-description = "Automatic chapter marker generation for MKV movies on a Plex server"
+description = "Chapters for the movies on your Plex server, made automatically"
 readme = "README.md"
 requires-python = ">=3.13"
 license = "GPL-3.0-or-later"

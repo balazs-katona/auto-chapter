@@ -22,6 +22,9 @@ You need:
   openSUSE should work but haven't been tested yet -- reports are welcome:
   https://github.com/balazs-katona/auto-chapter/issues
 - a Plex Media Server that you manage
+- for the End Credits chapter: Plex Pass, with "Generate credits video
+  markers" turned on in Plex (Settings → Library). Without it everything
+  else works, only the End Credits chapter is missing.
 - your movie folders reachable from this computer: on its own disk, or on a
   network share mounted here, for example from a NAS (see
   [Mounting a network share](#mounting-a-network-share))
@@ -71,7 +74,7 @@ If the installer says to open a new terminal first, do that.
 2. Click the three dots, then **Get Info**
 3. At the bottom of the window, click **View XML**
 4. In the browser's address bar, go to the very end and copy the text after
-   `X-Plex-Token=` (about 20 letters and digits)
+   `X-Plex-Token=` (about 20 characters: letters, digits, sometimes `-` or `_`)
 
 Plex's own guide:
 https://support.plex.tv/articles/204059436-finding-an-authentication-token-x-plex-token/
@@ -109,7 +112,8 @@ computer. The share is mounted again after every restart.
 
 1. In the main menu choose **1) Generate Auto Chapters**. You see how many
    movies need chapters.
-2. Choose **1) for movies with Plex End Credits** (recommended).
+2. Choose **1) for movies with Plex End Credits** (recommended). Without Plex
+   Pass, choose **2) for all movies**.
 3. Type a small number first (for example `2`) to try it. Enter alone does
    all of them.
 4. Check in Plex that the chapters are there, then do the rest.
@@ -117,9 +121,9 @@ computer. The share is mounted again after every restart.
 While it works: `Ctrl+C` once stops after the current movie, twice stops at
 once. `s` switches the computer off when the work is done.
 
-Later, when new movies arrive, just run **Generate** again. **Update** adds
-the End Credits chapter to movies that have Plex End Credits now but didn't
-when they got their chapters.
+Later, when new movies arrive, just run **Generate** again. **Update** redoes
+the Auto Chapters of movies that have Plex End Credits now but didn't when
+they got their chapters, this time with the End Credits chapter.
 
 Everything you set in the installer can be changed in the app's **Settings**.
 

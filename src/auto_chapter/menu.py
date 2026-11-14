@@ -157,15 +157,22 @@ _NOTE_WIDTH = 76
 
 
 def _print_option_note(text: str) -> None:
-    """Print an option's explanation, wrapped and indented under its number."""
-    console.print(
-        textwrap.fill(
-            text,
-            width=_NOTE_WIDTH,
-            initial_indent=_NOTE_INDENT,
-            subsequent_indent=_NOTE_INDENT,
-        )
+    """Print an option's explanation, wrapped, dim and indented under its number
+    (the look of _show_options' notes, 1.1.2)."""
+    filled = textwrap.fill(
+        text,
+        width=_NOTE_WIDTH,
+        initial_indent=_NOTE_INDENT,
+        subsequent_indent=_NOTE_INDENT,
     )
+    console.print(f"[dim]{escape(filled)}[/dim]")
+
+
+def _print_option(number: int, name: str, note: str) -> None:
+    """One choice of a hand-built menu, in _show_options' look: the number,
+    the name in bold, the note dim under it, an empty line before it."""
+    console.print(f"\n  [cyan]{number}[/cyan]) [bold]{name}[/bold]")
+    _print_option_note(note)
 
 
 def parse_selection(spec: str, max_n: int) -> list[int]:
@@ -546,6 +553,15 @@ def _detect_and_confirm_write(mv: Movie, orch: Orchestrator) -> list[Movie]:
 
 # --- Scan status submenu ---
 
+# Plex finds End Credits only with Plex Pass and its credits detection on
+# (owner's audit 2026-11-14: "usually within a few days" promised it to all).
+_UPDATE_LATER = (
+    "Once Plex detects {poss} End Credits (this needs Plex Pass, usually within "
+    "a few days), run the Update menu yourself to process {obj} again, this "
+    "time with the End Credits chapter included."
+)
+
+
 def _ask_credits_filter(picked: list[Movie]) -> list[Movie] | None:
     """Ask how to handle picked movies that don't have Plex End Credits yet.
 
@@ -578,11 +594,6 @@ def _ask_credits_filter(picked: list[Movie]) -> list[Movie] | None:
         return _ask_process_without_credits(picked)
 
     lead = "Some of the movies you selected don't have Plex End Credits yet."
-    option_all = "Process all selected movies"
-    option_only_text = (
-        "The movies without Plex End Credits stay unprocessed. You can process\n"
-        "     them next time, once Plex has detected their End Credits."
-    )
 
     console.print(f"\n{lead}\n")
     console.print(
@@ -590,20 +601,19 @@ def _ask_credits_filter(picked: list[Movie]) -> list[Movie] | None:
         f"  Without Plex End Credits:                {len(without_credits)}"
     )
     console.print("\n[bold]How would you like to handle them?[/bold]")
-    console.print("  [dim]0)[/dim] Cancel")
-    console.print("  [dim]1)[/dim] Process only the movies with Plex End Credits")
-    console.print(f"     {option_only_text}")
-    console.print(f"  [dim]2)[/dim] {option_all}")
-    console.print(
-        "     The movies without Plex End Credits will get Auto Chapters now, but no"
+    console.print("  [cyan]0[/cyan]) Cancel")
+    _print_option(
+        1,
+        "Process only the movies with Plex End Credits",
+        "The movies without Plex End Credits stay unprocessed. You can process "
+        "them next time, once Plex has detected their End Credits.",
     )
-    console.print(
-        "     End Credits chapter. Once Plex detects their End Credits (usually within"
+    _print_option(
+        2,
+        "Process all selected movies",
+        "The movies without Plex End Credits will get Auto Chapters now, but no "
+        f"End Credits chapter. {_UPDATE_LATER.format(poss='their', obj='them')}",
     )
-    console.print(
-        "     a few days), run the Update menu yourself to process them again, this"
-    )
-    console.print("     time with the End Credits chapter included.")
 
     try:
         choice = IntPrompt.ask("Choose", choices=["0", "1", "2"], show_choices=True)
@@ -634,16 +644,17 @@ def _ask_process_without_credits(picked: list[Movie]) -> list[Movie] | None:
 
     console.print(f"\n{lead}")
     console.print(f"\n[bold]How would you like to handle {obj}?[/bold]")
-    console.print("  [dim]0)[/dim] Cancel")
-    _print_option_note(
+    _print_option(
+        0,
+        "Cancel",
         f"Nothing is processed. You can process {obj} next time, once Plex has "
-        f"detected {poss} End Credits."
+        f"detected {poss} End Credits.",
     )
-    console.print(f"  [dim]1)[/dim] Process {obj} anyway")
-    _print_option_note(
-        f"{subj} will get Auto Chapters now, but no End Credits chapter. Once Plex "
-        f"detects {poss} End Credits (usually within a few days), run the Update menu "
-        f"yourself to process {obj} again, this time with the End Credits chapter included."
+    _print_option(
+        1,
+        f"Process {obj} anyway",
+        f"{subj} will get Auto Chapters now, but no End Credits chapter. "
+        f"{_UPDATE_LATER.format(poss=poss, obj=obj)}",
     )
 
     try:
@@ -1891,8 +1902,7 @@ def _about_flow(config: Config) -> None:
     console.print(
         Panel(
             f"[bold]auto-chapter[/bold] v{__version__}\n"
-            f"[dim]Automatic chapter marker generation for MKV movies "
-            f"on a Plex server.[/dim]\n"
+            f"[dim]Chapters for the movies on your Plex server, made automatically.[/dim]\n"
             f"\n"
             f"[bold]Log file:[/bold]  {log_path if log_path else '(file logging disabled)'}\n"
             f"[bold]GitHub:[/bold]    https://github.com/balazs-katona/auto-chapter\n"
@@ -1943,7 +1953,7 @@ def run_menu(orch: Orchestrator, config: Config) -> None:
     # README (owner, 2026-11-14). Same words as the screens behind them.
     notes = [
         "Adds Auto Chapters to the movies that need them",
-        "Adds the End Credits chapter to movies that have Plex End Credits now",
+        "Redoes the Auto Chapters of these movies, now with the End Credits chapter",
         "One movie by title, also one with Auto Chapters; asks before writing",
         "Folder mappings, minimum movie length, chapter threshold, Plex connection",
         "Version, log file, GitHub page and license",

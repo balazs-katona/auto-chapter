@@ -166,6 +166,21 @@ def test_credits_filter_none_with_credits_can_proceed_anyway(prompt: SimpleNames
     assert prompt.choices == [["0", "1"]]
 
 
+def test_credits_filter_says_plex_end_credits_need_plex_pass(
+    prompt: SimpleNamespace, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Without Plex Pass, Plex never finds End Credits (owner's audit 2026-11-14)."""
+    prompt.answers = [0, 0]
+
+    _ask_credits_filter([_movie("A", False)])
+    _ask_credits_filter([_movie("A", False), _movie("B", True)])
+
+    out = " ".join(capsys.readouterr().out.split())
+    assert out.count("(this needs Plex Pass, usually within a few days)") == 2
+    assert "1) Process it anyway" in out
+    assert "2) Process all selected movies" in out
+
+
 def test_credits_filter_mixed_only_with_credits(prompt: SimpleNamespace) -> None:
     credited = [_movie("A", True), _movie("B", True)]
     picked = [credited[0], _movie("C", False), credited[1]]

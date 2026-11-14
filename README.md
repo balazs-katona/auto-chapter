@@ -15,7 +15,8 @@ scene, or straight to the end credits.
 - **Its own detection method**: it finds natural scene boundaries by
   itself -- a fade to black first, the strongest visual cut where there is
   none -- and keeps the chapters evenly spread through the movie.
-- **End Credits chapter**: wherever Plex has found the end credits.
+- **End Credits chapter**: wherever Plex has found the end credits (Plex
+  finds them with Plex Pass).
 - **Safe**: nothing is re-encoded, and the original file is replaced only
   when the new one is complete and checked.
 - **Chapters in the file**: they stay in the MKV file, so other players
@@ -71,6 +72,10 @@ details for advanced users. **CHANGELOG.md**: what changed in each version.
   it must decode H.264 and HEVC video -- the installer and the app warn if it can't)
 - mkvmerge, mkvextract (from mkvtoolnix)
 - A Plex Media Server with an auth token
+- For the End Credits chapter: Plex Pass, with Plex's credits detection
+  turned on (in Plex: Settings → Library → "Generate credits video
+  markers"). Without it the movies get Auto Chapters, but no End Credits
+  chapter.
 - The movie files reachable from this computer: on its own disk, or a
   network share mounted here (for example from a NAS)
 

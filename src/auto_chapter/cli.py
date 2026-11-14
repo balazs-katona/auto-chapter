@@ -24,7 +24,7 @@ from auto_chapter.plex_client import PlexClient
 
 app = typer.Typer(
     name="auto-chapter",
-    help="Automatic chapter marker generation for MKV movies on a Plex server.",
+    help="Chapters for the movies on your Plex server, made automatically.",
     invoke_without_command=True,
     no_args_is_help=False,
 )

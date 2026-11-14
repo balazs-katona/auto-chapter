@@ -70,10 +70,10 @@ ask() {
 }
 
 echo -e "${BOLD}"
-echo "================================================================"
+echo "===================================================================="
 echo "  auto-chapter installer  (v$VERSION)"
-echo "  Plex automatic chapter marker generator"
-echo "================================================================"
+echo "  Chapters for the movies on your Plex server, made automatically"
+echo "===================================================================="
 echo -e "${NC}"
 echo -e "${DIM}Press Ctrl+C at any time to cancel the installation.${NC}"
 
@@ -378,6 +378,13 @@ LAUNCHEOF
     chmod +x "$launcher"
 }
 
+# Does this look like a Plex token? About 20 characters: letters, digits,
+# sometimes - or _ (until 1.1.2 a token with - or _ was refused). Catches a
+# pasted URL, shell command or extra text before it reaches Plex.
+looks_like_token() {
+    [[ "$1" =~ ^[A-Za-z0-9_-]{15,40}$ ]]
+}
+
 need_config=true
 if [ -f "$CONF_FILE" ] && [ -f "$ENV_FILE" ]; then
     token_in_env=$(grep -E '^PLEX_TOKEN=' "$ENV_FILE" 2>/dev/null | cut -d= -f2)
@@ -518,14 +525,12 @@ PYEOF
                     echo -e "${YELLOW}Token cannot be empty. Try again.${NC}"
                     continue
                 fi
-                # Plex tokens are ~20 alphanumeric characters. If the user pasted
-                # something wildly different (URL, shell command, extra spaces),
-                # catch it here instead of feeding garbage to plexapi.
-                if [[ "$plex_token" =~ ^[A-Za-z0-9]{15,40}$ ]]; then
+                if looks_like_token "$plex_token"; then
                     break
                 fi
                 warn "That doesn't look like a Plex token."
-                echo -e "${DIM}Plex tokens are ~20 alphanumeric characters (like: AbCdEf1234GhIj5678Kl).${NC}"
+                echo -e "${DIM}A Plex token is about 20 characters: letters, digits, sometimes - or _${NC}"
+                echo -e "${DIM}(like: AbCd-Ef12_34GhIj56Kl).${NC}"
                 echo -e "${DIM}Make sure you copied only the token, not the full URL.${NC}"
                 echo
             done

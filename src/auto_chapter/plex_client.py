@@ -322,11 +322,13 @@ class PlexClient:
         """Scan all movie sections and return movies that need processing.
 
         Args:
-            chapter_threshold: movies with fewer chapters than this are candidates.
+            chapter_threshold: movies with fewer chapters than this are
+                candidates -- unless the chapters are the app's own (Auto
+                Chapters), which are done however few they are.
             title_filter: optional substring filter on the Plex title or the
                 original title, ignoring case and accents (see _searchable).
-            regenerate: if True, also include movies with N>=threshold chapters
-                where all chapters are "Auto Chapter*" or "Credits".
+            regenerate: if True, also include movies with Auto Chapters (all
+                chapters "Auto Chapter*" or "Credits"), however many.
             min_duration_seconds: filter out movies shorter than this.
             known_unreachable_folders: pre-computed result of
                 self._mapper.unreachable_enabled_folders(), if the caller
@@ -386,7 +388,11 @@ class PlexClient:
             chapter_count = len(chapters)
             is_auto = chapter_count > 0 and _all_auto_chapter_names(chapters)
 
-            if chapter_count >= chapter_threshold:
+            # A movie with Auto Chapters is done, however few they are: a short
+            # movie can get fewer than the threshold, and until 1.1.2 it came
+            # back as "needing Auto Chapters" at every Generate (and was not
+            # counted under "Movies with Auto Chapters").
+            if is_auto or chapter_count >= chapter_threshold:
                 if is_auto:
                     stats.with_auto_chapters += 1
                 else:

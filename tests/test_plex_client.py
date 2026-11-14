@@ -689,6 +689,47 @@ def test_title_search_still_offers_a_movie_with_its_own_auto_chapters(
     assert stats.skipped == []
 
 
+def test_auto_chapters_below_the_threshold_are_done(monkeypatch, tmp_path: Path) -> None:
+    """A short movie can get only 3 Auto Chapters: it must not come back at
+    every Generate (owner's audit, 2026-11-14), and it counts as done."""
+    (tmp_path / "Short.mkv").write_bytes(b"fake")
+    movie = _make_fake_movie("/share/Short.mkv", "Short")
+    movie.chapters = _chapters("Auto Chapter 1", "Auto Chapter 2", "Auto Chapter 3")
+    client = _scan_client(monkeypatch, tmp_path, [movie])
+
+    movies, stats = client.iter_movie_candidates(chapter_threshold=4)
+
+    assert movies == []
+    assert stats.with_auto_chapters == 1
+
+
+def test_title_search_offers_auto_chapters_below_the_threshold(
+    monkeypatch, tmp_path: Path
+) -> None:
+    (tmp_path / "Short.mkv").write_bytes(b"fake")
+    movie = _make_fake_movie("/share/Short.mkv", "Short")
+    movie.chapters = _chapters("Auto Chapter 1", "Auto Chapter 2")
+    client = _scan_client(monkeypatch, tmp_path, [movie])
+
+    movies, _stats = _search(client, "Short")
+
+    assert [m.title for m in movies] == ["Short"]
+    assert movies[0].has_auto_chapters is True
+
+
+def test_other_chapters_below_the_threshold_still_need_auto_chapters(
+    monkeypatch, tmp_path: Path
+) -> None:
+    (tmp_path / "Heat.mkv").write_bytes(b"fake")
+    movie = _make_fake_movie("/share/Heat.mkv", "Heat")
+    movie.chapters = _chapters("Chapter 1", "Chapter 2")
+    client = _scan_client(monkeypatch, tmp_path, [movie])
+
+    movies, _stats = client.iter_movie_candidates(chapter_threshold=4)
+
+    assert [m.title for m in movies] == ["Heat"]
+
+
 def test_a_full_scan_does_not_collect_skipped_matches(monkeypatch, tmp_path: Path) -> None:
     """Without a title filter the list would hold the whole library."""
     client = _scan_client(monkeypatch, tmp_path, [_make_fake_movie("/share/Heat.mkv", "Heat")])
