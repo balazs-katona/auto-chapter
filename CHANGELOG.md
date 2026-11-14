@@ -3,6 +3,14 @@
 The changes in each version of auto-chapter. Version numbers follow
 [Semantic Versioning](https://semver.org/).
 
+## 1.1.1 — 2026-11-14
+
+Please update: this fixes a safety problem.
+
+- Fixed: pressing Ctrl+C twice while a movie was being written could, near
+  the end of the writing, replace the movie with an incomplete file. Now a
+  stop during writing always keeps the original file.
+
 ## 1.1.0 — 2026-11-14
 
 - Added: the main menu says in one line under each item what it does, so
