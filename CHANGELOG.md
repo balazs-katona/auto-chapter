@@ -3,6 +3,18 @@
 The changes in each version of auto-chapter. Version numbers follow
 [Semantic Versioning](https://semver.org/).
 
+## 1.1.2 — 2026-11-14
+
+- Changed: the menus are easier to read -- the item names are bold, with
+  an empty line between the items
+- Added: Settings and the Generate choice say in one line under each item
+  what it does
+- Changed: when none of the movies needing Auto Chapters has Plex End
+  Credits yet, Generate says how many movies wait and what you can do
+- Added: when you stop the work and a tool takes long to close the movie
+  file (on a network share this can take a minute), the program says what
+  it is waiting for
+
 ## 1.1.1 — 2026-11-14
 
 Please update: this fixes a safety problem.
