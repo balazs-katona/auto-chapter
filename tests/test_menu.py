@@ -314,7 +314,22 @@ def test_first_n_with_end_credits_only_but_none_has_them(
 
     assert prompt.asked == []
     assert batch.calls == []
-    assert "None of the movies has Plex End Credits yet." in capsys.readouterr().out
+    out = " ".join(capsys.readouterr().out.split())
+    assert "None of the 3 movies needing Auto Chapters has Plex End Credits yet." in out
+    assert 'Choose "for all movies" to process them now' in out
+    assert "wait until Plex has detected their End Credits." in out
+
+
+def test_first_n_with_end_credits_only_one_movie_left_without_them(
+    prompt: SimpleNamespace, batch: SimpleNamespace, capsys: pytest.CaptureFixture[str]
+) -> None:
+    menu._process_first_n([_movie("M01", False)], None, credits_only=True)
+
+    assert batch.calls == []
+    out = " ".join(capsys.readouterr().out.split())
+    assert "The 1 movie needing Auto Chapters has no Plex End Credits yet." in out
+    assert "to process it now" in out
+    assert "detected its End Credits." in out
 
 
 def test_first_n_all_movies_counts_from_the_full_list_and_says_what_it_means(
@@ -1802,7 +1817,37 @@ def test_main_menu_says_what_each_item_does(
     assert lines[generate + 1] == "Adds Auto Chapters to the movies that need them"
     about = lines.index("5) About")
     assert lines[about + 1] == "Version, log file, GitHub page and license"
-    assert lines[lines.index("0) Quit") + 1] == "1) Generate Auto Chapters"
+    # 1.1.2 (owner): an empty line between the items, so each note
+    # clearly belongs to the item above it.
+    assert lines[lines.index("0) Quit") + 1] == ""
+    assert lines[generate + 2] == ""
+    assert lines[about - 1] == ""
+
+
+def test_settings_says_what_each_item_does(
+    prompt: SimpleNamespace, capsys: pytest.CaptureFixture[str]
+) -> None:
+    prompt.answers = [0]
+
+    menu._settings_flow(SimpleNamespace(), SimpleNamespace())
+
+    lines = [line.strip() for line in capsys.readouterr().out.splitlines()]
+    after = {lines[i - 1]: line for i, line in enumerate(lines) if i}
+    assert after["1) Folder mappings"] == "Connects each Plex movie folder to its path on this computer"
+    assert after["2) Minimum movie length"] == "Shorter movies are skipped"
+    assert after["3) Chapter threshold"] == "How many chapters a movie needs to keep its own chapter list"
+    assert after["4) Plex connection"] == "Plex URL and token, and reconnect"
+
+
+def test_options_without_notes_keep_the_compact_layout(
+    prompt: SimpleNamespace, capsys: pytest.CaptureFixture[str]
+) -> None:
+    prompt.answers = [1]
+
+    menu._show_options("Pick", ["One", "Two"], allow_cancel=True)
+
+    lines = [line.strip() for line in capsys.readouterr().out.splitlines()]
+    assert lines[lines.index("0) Cancel") + 1 :][:2] == ["1) One", "2) Two"]
 
 
 def test_main_menu_says_why_plex_is_not_connected(

@@ -95,15 +95,23 @@ def _show_options(
     If allow_cancel is True, prepends a '0) {cancel_label}' option at the top.
     Returns 0 when the cancel option is chosen or when the user presses Ctrl+C / Ctrl+D.
     If allow_cancel is False, Ctrl+C propagates (so the caller can decide to quit).
-    notes: one dim line under each option saying what it does (the main menu).
+    notes: one dim line under each option saying what it does ("" for none).
+    With notes, the option names are bold and an empty line separates the
+    items, so each note reads as part of its own item (owner, 1.1.2: name and
+    note ran together).
     """
     console.print(f"\n[bold]{title}[/bold]")
     if allow_cancel:
         console.print(f"  [cyan]0[/cyan]) {cancel_label}")
     for i, opt in enumerate(options, start=1):
-        console.print(f"  [cyan]{i}[/cyan]) {opt}")
-        if notes and notes[i - 1]:
-            console.print(f"     [dim]{notes[i - 1]}[/dim]")
+        if notes:
+            if allow_cancel or i > 1:
+                console.print()
+            console.print(f"  [cyan]{i}[/cyan]) [bold]{opt}[/bold]")
+            if notes[i - 1]:
+                console.print(f"     [dim]{notes[i - 1]}[/dim]")
+        else:
+            console.print(f"  [cyan]{i}[/cyan]) {opt}")
 
     start = 0 if allow_cancel else 1
     try:
@@ -713,9 +721,22 @@ def _process_first_n(
     if credits_only:
         pool = [mv for mv in candidates if mv.has_plex_credits]
         if not pool:
-            console.print(
-                "\n[yellow]None of the movies has Plex End Credits yet.[/yellow]"
-            )
+            # Owner (1.1.2): "None of the movies" read as "nothing left to do",
+            # yet the list still showed them. Say how many wait and what to do.
+            n = len(candidates)
+            if n == 1:
+                text = (
+                    "The 1 movie needing Auto Chapters has no Plex End Credits yet. "
+                    'Choose "for all movies" to process it now without the End Credits '
+                    "chapter, or wait until Plex has detected its End Credits."
+                )
+            else:
+                text = (
+                    f"None of the {n} movies needing Auto Chapters has Plex End Credits "
+                    'yet. Choose "for all movies" to process them now without the End '
+                    "Credits chapter, or wait until Plex has detected their End Credits."
+                )
+            console.print(f"\n[yellow]{text}[/yellow]")
             return
     else:
         pool = list(candidates)
@@ -895,6 +916,11 @@ def _generate_auto_chapters_flow(orch: Orchestrator, config: Config) -> None:
                 "Show the list and pick movies manually",
             ],
             allow_cancel=True,
+            notes=[
+                "These also get the End Credits chapter",
+                "Those without Plex End Credits get no End Credits chapter now",
+                "",
+            ],
         )
 
         if choice == 0:
@@ -1832,6 +1858,12 @@ def _settings_flow(orch: Orchestrator, config: Config) -> None:
             ],
             allow_cancel=True,
             cancel_label="Back to main menu",
+            notes=[
+                "Connects each Plex movie folder to its path on this computer",
+                "Shorter movies are skipped",
+                "How many chapters a movie needs to keep its own chapter list",
+                "Plex URL and token, and reconnect",
+            ],
         )
         if choice == 0:
             return
