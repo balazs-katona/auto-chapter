@@ -2566,3 +2566,24 @@ def test_the_threshold_says_fewer_chapters_get_replaced(
 
     out = " ".join(capsys.readouterr().out.split())
     assert "Movies with fewer get Auto Chapters, which replace their own chapters." in out
+
+
+def test_quiet_lines_use_the_fixed_grey_not_dim() -> None:
+    """1.2.1: the owner's terminal didn't show "dim" at all, so the help lines
+    were as bright as the item names. Quiet lines are [note] (a fixed grey)."""
+    from pathlib import Path
+
+    from auto_chapter.console import NOTE_STYLE, console
+
+    src = Path(menu.__file__).parent
+    offenders = [
+        f"{py.relative_to(src)}:{n}"
+        for py in src.rglob("*.py")
+        for n, line in enumerate(py.read_text(encoding="utf-8").splitlines(), start=1)
+        if "[dim]" in line and not line.lstrip().startswith("#")
+    ]
+    assert offenders == []
+    color = console.get_style("note").color
+    assert color is not None and color.name == NOTE_STYLE and color.number == 247
+    install_sh = (src.parent.parent / "install.sh").read_text(encoding="utf-8")
+    assert "DIM='\\033[38;5;247m'" in install_sh

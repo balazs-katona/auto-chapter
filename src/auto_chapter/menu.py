@@ -82,23 +82,23 @@ def _count(n: int, one: str, many: str) -> str:
 # nothing said that the movie files get written, how long it takes, or that
 # the folder needs room for a copy).
 WRITE_NOTICE = (
-    "[dim]Processing a movie: auto-chapter finds its chapters and writes them into the "
+    "[note]Processing a movie: auto-chapter finds its chapters and writes them into the "
     "movie file, a few minutes per movie. Meanwhile the movie's folder needs free space "
-    "for one more copy of it; the original is replaced only when the new file is complete.[/dim]"
+    "for one more copy of it; the original is replaced only when the new file is complete.[/note]"
 )
 
 # Standard cancel hint shown wherever the user can back out.
-CANCEL_HINT = "[dim](type 0 to cancel)[/dim]"
+CANCEL_HINT = "[note](type 0 to cancel)[/note]"
 
 # Ctrl+C tip for single-movie operations (one press cancels immediately).
 CTRL_C_TIP_SINGLE = (
-    "[dim]Press Ctrl+C to cancel. The original file is never damaged.[/dim]"
+    "[note]Press Ctrl+C to cancel. The original file is never damaged.[/note]"
 )
 
 # Ctrl+C tip for multi-movie batches (graceful first press, force on second).
 CTRL_C_TIP_BATCH = (
-    "[dim]Press Ctrl+C to stop (twice for immediate stop, "
-    "the original file is never damaged).[/dim]"
+    "[note]Press Ctrl+C to stop (twice for immediate stop, "
+    "the original file is never damaged).[/note]"
 )
 
 
@@ -130,7 +130,7 @@ def _show_options(
                 console.print()
             console.print(f"  [cyan]{i}[/cyan]) [bold]{opt}[/bold]")
             if notes[i - 1]:
-                console.print(f"     [dim]{notes[i - 1]}[/dim]")
+                console.print(f"     [note]{notes[i - 1]}[/note]")
         else:
             console.print(f"  [cyan]{i}[/cyan]) {opt}")
 
@@ -193,7 +193,7 @@ def _print_option_note(text: str) -> None:
         initial_indent=_NOTE_INDENT,
         subsequent_indent=_NOTE_INDENT,
     )
-    console.print(f"[dim]{escape(filled)}[/dim]")
+    console.print(f"[note]{escape(filled)}[/note]")
 
 
 def _print_option(number: int, name: str, note: str) -> None:
@@ -257,7 +257,7 @@ def _match_note(movie: Movie) -> str:
     if movie.has_auto_chapters:
         return f"  [yellow]({_auto_chapters_status(movie)})[/yellow]"
     if not movie.has_plex_credits:
-        return "  [dim](no Plex End Credits yet)[/dim]"
+        return "  [note](no Plex End Credits yet)[/note]"
     return ""
 
 
@@ -270,7 +270,7 @@ def _scan_progress(label: str) -> Iterator[ScanProgress]:
     for minutes and looked stuck.
     """
     console.print()
-    with Progress(TextColumn("[dim]{task.description}[/dim]"), console=console) as progress:
+    with Progress(TextColumn("[note]{task.description}[/note]"), console=console) as progress:
         task = progress.add_task(label, total=None)
 
         def update(done: int, total: int) -> None:
@@ -311,7 +311,7 @@ def _process_one(movie: Movie, orch: Orchestrator) -> ProcessingResult | None:
     if proc.written:
         console.print(f"  [green]Written[/green] in {proc.elapsed_seconds:.0f}s.")
         if orch.plex.trigger_analyze(movie):
-            console.print("  [dim]Plex Analyze queued.[/dim]")
+            console.print("  [note]Plex Analyze queued.[/note]")
     else:
         console.print(f"  [red]Write failed:[/red] {_short_error(proc.error or 'unknown error')}")
     return proc
@@ -339,7 +339,7 @@ def _run_batch(movies: list[Movie], orch: Orchestrator) -> list[Movie]:
             console.print(
                 "\n[bold yellow]Shutdown scheduled.[/bold yellow] "
                 f"The system will power off {when}. "
-                "[dim]Press 's' to cancel.[/dim]"
+                "[note]Press 's' to cancel.[/note]"
             )
         else:
             going_on = (
@@ -347,7 +347,7 @@ def _run_batch(movies: list[Movie], orch: Orchestrator) -> list[Movie]:
                 if single
                 else "The batch will continue without shutting down."
             )
-            console.print(f"\n[bold]Shutdown cancelled.[/bold] [dim]{going_on}[/dim]")
+            console.print(f"\n[bold]Shutdown cancelled.[/bold] [note]{going_on}[/note]")
 
     succeeded_movies: list[Movie] = []
     failed = 0
@@ -425,16 +425,16 @@ def _run_batch(movies: list[Movie], orch: Orchestrator) -> list[Movie]:
     if shutdown_toggle.scheduled:
         if single and not succeeded:
             console.print(
-                "[dim]Scheduled shutdown cancelled -- the movie wasn't written.[/dim]\n"
+                "[note]Scheduled shutdown cancelled -- the movie wasn't written.[/note]\n"
             )
         elif was_force_stopped:
             console.print(
-                "[dim]Scheduled shutdown cancelled -- the batch was stopped immediately.[/dim]\n"
+                "[note]Scheduled shutdown cancelled -- the batch was stopped immediately.[/note]\n"
             )
         elif succeeded == 0:
             console.print(
-                "[dim]Scheduled shutdown cancelled -- no movies were "
-                "processed successfully.[/dim]\n"
+                "[note]Scheduled shutdown cancelled -- no movies were "
+                "processed successfully.[/note]\n"
             )
         else:
             execute_shutdown_with_countdown()
@@ -472,12 +472,12 @@ def _detect_and_confirm_write(mv: Movie, orch: Orchestrator) -> list[Movie]:
             console.print(
                 "\n[bold yellow]Shutdown scheduled.[/bold yellow] "
                 "The system will power off once this movie is written. "
-                "[dim]Press 's' to cancel.[/dim]"
+                "[note]Press 's' to cancel.[/note]"
             )
         else:
             console.print(
                 "\n[bold]Shutdown cancelled.[/bold] "
-                "[dim]Continuing without shutting down.[/dim]"
+                "[note]Continuing without shutting down.[/note]"
             )
 
     written = False
@@ -490,7 +490,7 @@ def _detect_and_confirm_write(mv: Movie, orch: Orchestrator) -> list[Movie]:
         # the session.
         can_toggle = shutdown_toggle.start(on_shutdown_toggle)
 
-        console.print(f"\n[dim]Detecting chapters in {mv.display}...[/dim]")
+        console.print(f"\n[note]Detecting chapters in {mv.display}...[/note]")
         console.print(CTRL_C_TIP_SINGLE)
         if can_toggle:
             console.print(SHUTDOWN_TIP_SINGLE)
@@ -556,7 +556,7 @@ def _detect_and_confirm_write(mv: Movie, orch: Orchestrator) -> list[Movie]:
                 f"\n[green]Written[/green] in {proc.elapsed_seconds:.0f}s."
             )
             if orch.plex.trigger_analyze(mv):
-                console.print("[dim]Plex Analyze queued.[/dim]")
+                console.print("[note]Plex Analyze queued.[/note]")
             return [mv]
         else:
             console.print(
@@ -574,8 +574,8 @@ def _detect_and_confirm_write(mv: Movie, orch: Orchestrator) -> list[Movie]:
                 execute_shutdown_with_countdown()
             else:
                 console.print(
-                    "[dim]Scheduled shutdown cancelled -- "
-                    "the movie wasn't written.[/dim]\n"
+                    "[note]Scheduled shutdown cancelled -- "
+                    "the movie wasn't written.[/note]\n"
                 )
 
 
@@ -702,8 +702,8 @@ def _show_list_and_pick(candidates: list[Movie], orch: Orchestrator) -> None:
     """
     console.print(f"\n[bold]Movies ({len(candidates)}):[/bold]")
     for i, mv in enumerate(candidates, start=1):
-        marker = "" if mv.has_plex_credits else " [dim](no Plex End Credits yet)[/dim]"
-        console.print(f"  [dim]{i:>4})[/dim] {mv.display}{marker}")
+        marker = "" if mv.has_plex_credits else " [note](no Plex End Credits yet)[/note]"
+        console.print(f"  [note]{i:>4})[/note] {mv.display}{marker}")
     console.print(f"\n{WRITE_NOTICE}")
 
     while True:
@@ -785,16 +785,16 @@ def _process_first_n(
             # option's note already said "no End Credits chapter now", so only
             # the way to add it later (1.1.2 VM test: the text was repeated).
             console.print(
-                "\n[dim]Once Plex has detected their End Credits (this needs Plex Pass), "
-                "run the Update menu to add the End Credits chapter.[/dim]"
+                "\n[note]Once Plex has detected their End Credits (this needs Plex Pass), "
+                "run the Update menu to add the End Credits chapter.[/note]"
             )
 
     default = len(pool)
     console.print(
         f"\n{WRITE_NOTICE}\n"
         f"\n[bold]How many movies should we process?[/bold]\n"
-        f"[dim]They are processed in alphabetical order "
-        f"(max {len(pool)}, or 0 to cancel).[/dim]"
+        f"[note]They are processed in alphabetical order "
+        f"(max {len(pool)}, or 0 to cancel).[/note]"
     )
     try:
         n = IntPrompt.ask("Number", default=default)
@@ -816,8 +816,8 @@ def _process_first_n(
 # An unreachable folder may also be a wrong path (a typo in the installer): say
 # where it is fixed -- the owner found it only by chance (0.4.3).
 _WRONG_PATH_HINT = (
-    "[dim]If the path is wrong: Settings → Folder mappings → "
-    "2) Change a mapping's local or mounted path.[/dim]"
+    "[note]If the path is wrong: Settings → Folder mappings → "
+    "2) Change a mapping's local or mounted path.[/note]"
 )
 
 
@@ -860,7 +860,7 @@ def _check_folder_reachability(config: Config) -> tuple[bool, list[str]]:
         for path in unreachable:
             console.print(f"  {path}")
         console.print(
-            "[dim]Check that the drive/share is mounted, then try again.[/dim]"
+            "[note]Check that the drive/share is mounted, then try again.[/note]"
         )
         console.print(_WRONG_PATH_HINT)
         return False, unreachable
@@ -869,8 +869,8 @@ def _check_folder_reachability(config: Config) -> tuple[bool, list[str]]:
     for path in unreachable:
         console.print(f"  {path}")
     console.print(
-        "[dim]Check that the drive/share is mounted. "
-        "Movies there will show as missing.[/dim]"
+        "[note]Check that the drive/share is mounted. "
+        "Movies there will show as missing.[/note]"
     )
     console.print(_WRONG_PATH_HINT)
     return True, unreachable
@@ -1078,8 +1078,8 @@ def _print_ignored_mappings(ignored: list[str]) -> None:
         )
     if ignored:
         console.print(
-            "[dim]If the folder was renamed or moved in Plex, remove this mapping and add "
-            "the new folder\nin Settings → Folder mappings.[/dim]"
+            "[note]If the folder was renamed or moved in Plex, remove this mapping and add "
+            "the new folder\nin Settings → Folder mappings.[/note]"
         )
 
 
@@ -1121,11 +1121,11 @@ def _print_skipped_matches(skipped: list[SkippedMatch]) -> None:
         )
         for reason, n in by_reason.most_common():
             console.print(f"  - {_count(n, 'movie', 'movies')} -- {reason}")
-        console.print("[dim]Type more of the title to see them one by one.[/dim]")
+        console.print("[note]Type more of the title to see them one by one.[/note]")
     if any(sm.reason is SkipReason.OTHER_CHAPTERS for sm in skipped):
         console.print(
-            "[dim]A useful chapter list of a movie's own is left alone "
-            "(Settings → Chapter threshold).[/dim]"
+            "[note]A useful chapter list of a movie's own is left alone "
+            "(Settings → Chapter threshold).[/note]"
         )
 
 def _plex_ready(orch: Orchestrator) -> bool:
@@ -1154,8 +1154,8 @@ def _find_by_title(orch: Orchestrator) -> None:
             else "Type a movie title to search for. The title shown in Plex or the original\n"
             "title works, accents are optional, and a part of the title is enough.\n"
             "\n"
-            "[dim]This also finds movies that already have Auto Chapters, so you can make\n"
-            "them again.[/dim]",
+            "[note]This also finds movies that already have Auto Chapters, so you can make\n"
+            "them again.[/note]",
             empty_hint="Please type a movie title to search for, or 0 to cancel.",
             retry_prompt="Type a movie title",
         )
@@ -1163,7 +1163,7 @@ def _find_by_title(orch: Orchestrator) -> None:
             return  # back to main menu
         first_search = False
 
-        console.print(f"[dim]Searching for '{escape(title)}'...[/dim]")
+        console.print(f"[note]Searching for '{escape(title)}'...[/note]")
         try:
             # partial() binds the current title right now (a lambda would look
             # it up later, which is what lint rule B023 warns about)
@@ -1199,7 +1199,7 @@ def _find_by_title(orch: Orchestrator) -> None:
             else:
                 console.print(
                     f"[yellow]No movie found matching '{escape(title)}'.[/yellow]\n"
-                    f"[dim]Tip: check the spelling, or type a shorter part of the title.[/dim]"
+                    f"[note]Tip: check the spelling, or type a shorter part of the title.[/note]"
                 )
             continue  # back to title prompt -- nothing to process, try another title
 
@@ -1415,7 +1415,7 @@ def _folder_mappings(config: Config, orch: Orchestrator) -> None:
     # Plex is asked once, when the screen opens. Later renders (after an
     # Add, Change, Enable/disable or Remove) compare this list with the current
     # config, so the "no mapping yet" line stays right without another request.
-    console.print("\n[dim]Asking Plex for its folders...[/dim]")
+    console.print("\n[note]Asking Plex for its folders...[/note]")
     plex_folders, plex_problem = _plex_folders_or_problem(orch)
 
     while True:
@@ -1424,7 +1424,7 @@ def _folder_mappings(config: Config, orch: Orchestrator) -> None:
         # folder happens to be on a hung mount, this screen still renders
         # within a predictable time and the user can always reach Remove/
         # disable -- never gets stuck with no way to fix a bad mapping.
-        console.print("\n[dim]Checking folder status...[/dim]")
+        console.print("\n[note]Checking folder status...[/note]")
         status_by_local = {
             c.local: c.reachable
             for c in PathMapper(config.paths).check_enabled_folders()
@@ -1435,7 +1435,7 @@ def _folder_mappings(config: Config, orch: Orchestrator) -> None:
 
         console.print("\n[bold]Folder mappings[/bold]")
         if not config.paths:
-            console.print("  [dim](no folders mapped yet)[/dim]")
+            console.print("  [note](no folders mapped yet)[/note]")
         for m in config.paths:
             reachable = status_by_local.get(m.local) if m.enabled else True
             if reachable is True:
@@ -1459,27 +1459,27 @@ def _folder_mappings(config: Config, orch: Orchestrator) -> None:
             console.print(f"  [cyan]{_MAP_TOGGLE}[/cyan]) Enable or disable a mapping")
             console.print(f"  [cyan]{_MAP_REMOVE}[/cyan]) Remove folder mapping")
             console.print(
-                "[dim]Left: the folder's path on this computer (local or mounted). Right:\n"
-                "the same folder's path in Plex.[/dim]"
+                "[note]Left: the folder's path on this computer (local or mounted). Right:\n"
+                "the same folder's path in Plex.[/note]"
             )
 
         if unknown_to_plex:
             console.print(
-                "[dim]\\[not found in Plex]: Plex does not list a folder with exactly this\n"
+                "[note]\\[not found in Plex]: Plex does not list a folder with exactly this\n"
                 "path, so this mapping is not used. If the folder was renamed or moved in\n"
-                "Plex, remove this mapping and add the new folder (it is listed under Add).[/dim]"
+                "Plex, remove this mapping and add the new folder (it is listed under Add).[/note]"
             )
 
         if plex_folders is None:
             # Say so: silence would look like "everything is fine".
             console.print(
-                f"[dim]Couldn't ask Plex for its folders, so folders without a mapping and\n"
-                f"mappings Plex does not know can't be shown: {escape(plex_problem)}[/dim]"
+                f"[note]Couldn't ask Plex for its folders, so folders without a mapping and\n"
+                f"mappings Plex does not know can't be shown: {escape(plex_problem)}[/note]"
             )
         elif not plex_folders:
             console.print(
-                "[dim]Plex reported no movie folders, so the mappings can't be compared "
-                "with it.[/dim]"
+                "[note]Plex reported no movie folders, so the mappings can't be compared "
+                "with it.[/note]"
             )
         else:
             unmapped = _unmapped_plex_folders(plex_folders, config)
@@ -1488,8 +1488,8 @@ def _folder_mappings(config: Config, orch: Orchestrator) -> None:
                 console.print(
                     f"[yellow]{len(unmapped)} Plex folder{'s have' if many else ' has'} "
                     f"no mapping yet.[/yellow]\n"
-                    f"[dim]Movies in a folder without a mapping are skipped. "
-                    f"Choose {_MAP_ADD} to map {'them' if many else 'it'}.[/dim]"
+                    f"[note]Movies in a folder without a mapping are skipped. "
+                    f"Choose {_MAP_ADD} to map {'them' if many else 'it'}.[/note]"
                 )
 
         max_choice = _MAP_REMOVE if config.paths else _MAP_ADD
@@ -1602,13 +1602,13 @@ def _ask_path_on_this_computer(
         if reachable is False:
             console.print(f"[yellow]{escape(path)} does not exist on this computer.[/yellow]")
             console.print(
-                "[dim]This is fine if the folder will be mounted later "
-                "(e.g. NAS not connected yet).[/dim]"
+                "[note]This is fine if the folder will be mounted later "
+                "(e.g. NAS not connected yet).[/note]"
             )
         else:  # None -- timed out, possibly an unresponsive mount
             console.print(f"[yellow]Couldn't verify {escape(path)} in time.[/yellow]")
             console.print(
-                "[dim]It may be on a mount that's present but not responding.[/dim]"
+                "[note]It may be on a mount that's present but not responding.[/note]"
             )
         keep = _yes("Use it anyway?")
         if keep is None:
@@ -1617,7 +1617,7 @@ def _ask_path_on_this_computer(
             return path
         # "n": another path, like the installer (1.1.2 VM test: here it went
         # back to the mapping list).
-        console.print("[dim]Not used. Type another path, or 0 to cancel.[/dim]")
+        console.print("[note]Not used. Type another path, or 0 to cancel.[/note]")
 
 
 def _yes(question: str) -> bool | None:
@@ -1638,7 +1638,7 @@ def _movies_are_here(orch: Orchestrator, plex_path: str, path: str) -> bool:
     type another path. If it can't tell (Plex not answering, folder not read
     in time, no movies in Plex's folder) it says nothing and keeps the path.
     """
-    console.print("[dim]Comparing with the movies Plex has in this folder...[/dim]")
+    console.print("[note]Comparing with the movies Plex has in this folder...[/note]")
     try:
         match = orch.plex.folder_match(plex_path, path)
     except Exception as e:
@@ -1714,7 +1714,7 @@ def _change_folder_mapping(config: Config, orch: Orchestrator) -> None:
     if new_path is None:
         return
     if new_path == m.local:
-        console.print("[dim]That is the path it already has. Nothing changed.[/dim]")
+        console.print("[note]That is the path it already has. Nothing changed.[/note]")
         return
 
     old_path = m.local
@@ -1722,7 +1722,7 @@ def _change_folder_mapping(config: Config, orch: Orchestrator) -> None:
     _save_config_to_disk(config)
     console.print(
         f"[green]OK[/green] Mapping changed: {escape(new_path)} -> {escape(m.plex)} "
-        f"[dim](was {escape(old_path)})[/dim]"
+        f"[note](was {escape(old_path)})[/note]"
     )
 
 
@@ -1742,7 +1742,7 @@ def _add_folder_mapping(config: Config, orch: Orchestrator) -> list[str] | None:
 
     if not unmapped:
         console.print(
-            "\n[dim]No new folders in Plex. All movie folders are already mapped.[/dim]"
+            "\n[note]No new folders in Plex. All movie folders are already mapped.[/note]"
         )
         return all_folders
 
@@ -1839,8 +1839,8 @@ def _plex_connection(config: Config, orch: Orchestrator) -> None:
         masked = _mask_token(config.plex.token)
         console.print("\n[bold]Plex connection[/bold]")
         console.print("  [cyan]0[/cyan]) Back")
-        console.print(f"  [cyan]1[/cyan]) Change Plex URL   [dim]({config.plex.url})[/dim]")
-        console.print(f"  [cyan]2[/cyan]) Change Plex token [dim]({masked})[/dim]")
+        console.print(f"  [cyan]1[/cyan]) Change Plex URL   [note]({config.plex.url})[/note]")
+        console.print(f"  [cyan]2[/cyan]) Change Plex token [note]({masked})[/note]")
         console.print("  [cyan]3[/cyan]) Reconnect (retry with current URL/token)")
 
         try:
@@ -1897,11 +1897,11 @@ def _change_plex_url(config: Config, orch: Orchestrator) -> None:
     if not new_url.startswith(("http://", "https://")):
         new_url = f"http://{new_url}"
 
-    console.print("\n[dim]Testing new URL...[/dim]")
+    console.print("\n[note]Testing new URL...[/note]")
     ok, err = _test_plex_connection(new_url, config.plex.token)
     if not ok:
         console.print(f"[red]Connection failed:[/red] {err}")
-        console.print("[dim]URL not saved. The previous URL remains active.[/dim]")
+        console.print("[note]URL not saved. The previous URL remains active.[/note]")
         return
 
     config.plex.url = new_url
@@ -1922,11 +1922,11 @@ def _change_plex_token(config: Config, orch: Orchestrator) -> None:
     if not new_token:
         return
 
-    console.print("\n[dim]Testing new token...[/dim]")
+    console.print("\n[note]Testing new token...[/note]")
     ok, err = _test_plex_connection(config.plex.url, new_token)
     if not ok:
         console.print(f"[red]Connection failed:[/red] {err}")
-        console.print("[dim]Token not saved. The previous token remains active.[/dim]")
+        console.print("[note]Token not saved. The previous token remains active.[/note]")
         return
 
     config.plex.token = new_token
@@ -1989,13 +1989,13 @@ def _about_flow(config: Config) -> None:
     console.print(
         Panel(
             f"[bold]auto-chapter[/bold] v{__version__}\n"
-            f"[dim]Chapters for the movies on your Plex server, made automatically.[/dim]\n"
+            f"[note]Chapters for the movies on your Plex server, made automatically.[/note]\n"
             f"\n"
             f"[bold]Log file:[/bold]  {log_path if log_path else '(file logging disabled)'}\n"
             f"[bold]GitHub:[/bold]    https://github.com/balazs-katona/auto-chapter\n"
             f"[bold]License:[/bold]   GPL-3.0-or-later (no warranty, see LICENSE)\n"
             f"\n"
-            f"[dim]Found a bug or have a feature request? Open an issue there.[/dim]",
+            f"[note]Found a bug or have a feature request? Open an issue there.[/note]",
             border_style="cyan",
         )
     )
@@ -2018,13 +2018,13 @@ def run_menu(orch: Orchestrator, config: Config) -> None:
     # very first iteration too, so putting a second copy of the same message
     # here would just duplicate it back to back.
     if orch.plex.is_connected:
-        status_line = f"\n[dim]Connected to: {orch.plex.server_name}[/dim]"
+        status_line = f"\n[note]Connected to: {orch.plex.server_name}[/note]"
     else:
         status_line = ""
 
     console.print(
         Panel(
-            f"[bold]auto-chapter[/bold] [dim]v{__version__}[/dim]{status_line}",
+            f"[bold]auto-chapter[/bold] [note]v{__version__}[/note]{status_line}",
             border_style="green",
         )
     )
@@ -2066,13 +2066,13 @@ def run_menu(orch: Orchestrator, config: Config) -> None:
             console.print(
                 f"\n[yellow]Not connected to Plex{': ' if reason else '.'}[/yellow]"
                 f"{escape(reason) if reason else ''}\n"
-                "[dim]Generate/Update/Find will retry automatically -- or use "
-                "Settings → Plex connection to check now or update the address/token.[/dim]"
+                "[note]Generate/Update/Find will retry automatically -- or use "
+                "Settings → Plex connection to check now or update the address/token.[/note]"
             )
         if not any(m.enabled for m in config.paths):
             console.print(
                 "\n[yellow]No folders mapped.[/yellow] "
-                "[dim]Add one in Settings → Folder mappings.[/dim]"
+                "[note]Add one in Settings → Folder mappings.[/note]"
             )
         try:
             choice = _show_options(
@@ -2080,11 +2080,11 @@ def run_menu(orch: Orchestrator, config: Config) -> None:
             )
         except (KeyboardInterrupt, EOFError):
             # Safety net; _show_options with allow_cancel returns 0 instead
-            console.print("\n[dim]Goodbye.[/dim]")
+            console.print("\n[note]Goodbye.[/note]")
             return
 
         if choice == 0:
-            console.print("\n[dim]Goodbye.[/dim]")
+            console.print("\n[note]Goodbye.[/note]")
             return
 
         try:

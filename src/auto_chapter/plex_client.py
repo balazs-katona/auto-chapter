@@ -166,7 +166,7 @@ class PlexClient:
         __init__, and again from reconnect() any time a fresh attempt is
         needed.
         """
-        console.print("[dim]Connecting to Plex...[/dim]")
+        console.print("[note]Connecting to Plex...[/note]")
         try:
             # 10s per HTTP request is enough for a healthy Plex; if it takes
             # longer we prefer to retry rather than sit waiting up to 30s

@@ -63,8 +63,8 @@ def _say_when_slow(proc: "subprocess.Popen[str]", delay: float = SLOW_EXIT_SECON
         args = proc.args if isinstance(proc.args, list) else [str(proc.args)]
         tool = Path(str(args[0])).name if args else "the tool"
         console.print(
-            f"[dim]Waiting for {tool} to close the movie file -- on a network "
-            "share this can take a minute.[/dim]"
+            f"[note]Waiting for {tool} to close the movie file -- on a network "
+            "share this can take a minute.[/note]"
         )
 
 
@@ -109,7 +109,7 @@ def batch_interrupt() -> Iterator[None]:
             console.print(
                 "\n\n[bold yellow]Stop requested.[/bold yellow] "
                 "Will stop cleanly after the current movie.\n"
-                "[dim]Press Ctrl+C again to stop immediately.[/dim]\n"
+                "[note]Press Ctrl+C again to stop immediately.[/note]\n"
             )
         else:
             _state.force_stop = True

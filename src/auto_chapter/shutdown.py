@@ -24,8 +24,8 @@ from typing import Any
 from auto_chapter.console import console
 from auto_chapter.tool_env import tool_env
 
-SHUTDOWN_TIP_BATCH = "[dim]Press 's' to schedule shutdown after the batch.[/dim]"
-SHUTDOWN_TIP_SINGLE = "[dim]Press 's' to schedule shutdown once this movie is written.[/dim]"
+SHUTDOWN_TIP_BATCH = "[note]Press 's' to schedule shutdown after the batch.[/note]"
+SHUTDOWN_TIP_SINGLE = "[note]Press 's' to schedule shutdown once this movie is written.[/note]"
 
 
 class ShutdownToggle:
@@ -114,7 +114,7 @@ def execute_shutdown_with_countdown(seconds: int = 30) -> None:
         f"\n[bold yellow]Shutdown scheduled.[/bold yellow] "
         f"Powering off in {seconds} seconds."
     )
-    console.print("[dim]Press Ctrl+C to cancel.[/dim]\n")
+    console.print("[note]Press Ctrl+C to cancel.[/note]\n")
 
     try:
         for i in range(seconds, 0, -1):
@@ -130,7 +130,7 @@ def execute_shutdown_with_countdown(seconds: int = 30) -> None:
         console.print("\n[yellow]Shutdown cancelled.[/yellow]")
         return
 
-    console.print("[dim]Running 'systemctl poweroff'...[/dim]")
+    console.print("[note]Running 'systemctl poweroff'...[/note]")
     try:
         result = subprocess.run(
             ["systemctl", "poweroff"],
@@ -145,15 +145,15 @@ def execute_shutdown_with_countdown(seconds: int = 30) -> None:
             msg = result.stderr.strip() or "unknown error"
             console.print(f"[red]Shutdown failed:[/red] {msg}")
             console.print(
-                "[dim]The batch finished successfully; the machine is left running.[/dim]"
+                "[note]The batch finished successfully; the machine is left running.[/note]"
             )
     except FileNotFoundError:
         console.print("[red]Shutdown failed:[/red] 'systemctl' command not found.")
         console.print(
-            "[dim]The batch finished successfully; the machine is left running.[/dim]"
+            "[note]The batch finished successfully; the machine is left running.[/note]"
         )
     except subprocess.TimeoutExpired:
         console.print("[red]Shutdown failed:[/red] command timed out.")
         console.print(
-            "[dim]The batch finished successfully; the machine is left running.[/dim]"
+            "[note]The batch finished successfully; the machine is left running.[/note]"
         )

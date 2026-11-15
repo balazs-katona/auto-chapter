@@ -100,12 +100,12 @@ def _load_config(config_path: Path | None) -> Config:
     except FileNotFoundError:
         console.print(
             f"[red]Config file not found: {config_path or default_config_path()}[/red]\n"
-            "[dim]Run ./install.sh in the auto-chapter folder: it creates this file.[/dim]"
+            "[note]Run ./install.sh in the auto-chapter folder: it creates this file.[/note]"
         )
         raise typer.Exit(code=1) from None
     except ConfigError as e:
         console.print(f"[red]{escape(e.problem)}[/red]")
-        console.print(f"[dim]{escape(e.advice)}[/dim]")
+        console.print(f"[note]{escape(e.advice)}[/note]")
         raise typer.Exit(code=1) from None
     except Exception as e:
         # Not expected (ConfigError covers what can be wrong in the files), but

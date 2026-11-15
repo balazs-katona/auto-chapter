@@ -11,7 +11,9 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 BOLD='\033[1m'
-DIM='\033[2m'
+# Quiet lines in a fixed grey (256-colour 247 = the app's grey62): many
+# terminals don't show the "dim" attribute at all (1.2.1).
+DIM='\033[38;5;247m'
 NC='\033[0m'
 
 ok()    { echo -e "${GREEN}OK${NC}  $1"; }

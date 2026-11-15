@@ -168,7 +168,7 @@ def write_chapters_and_remux(
             TextColumn("    [progress.description]{task.description}"),
             BarColumn(bar_width=30),
             TaskProgressColumn(),
-            TextColumn("[dim]{task.fields[size_text]}[/dim]"),
+            TextColumn("[note]{task.fields[size_text]}[/note]"),
             TimeElapsedColumn(),
             transient=True,
             console=console,

@@ -13,5 +13,13 @@ with an active Progress context, instead of the bar updating in place.
 """
 
 from rich.console import Console
+from rich.theme import Theme
 
-console = Console()
+# "note": the quiet lines -- hints, help lines under menu items, details.
+# A fixed grey instead of Rich's "dim": many terminals don't show dim text at
+# all (the owner's showed the help lines as bright as the item names, 1.2.1),
+# while a 256-colour grey looks the same nearly everywhere. Write [note]...
+# [/note] in markup, never [dim].
+NOTE_STYLE = "grey62"
+
+console = Console(theme=Theme({"note": NOTE_STYLE}))

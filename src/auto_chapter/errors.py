@@ -36,7 +36,7 @@ def retry_on_plex_timeout[T](scan_fn: Callable[[], T], max_attempts: int = 3) ->
                 raise
             if attempt >= 2:
                 # Also for an address that does not answer at all, so not "slow".
-                console.print("[dim]No answer from Plex yet; retrying...[/dim]")
+                console.print("[note]No answer from Plex yet; retrying...[/note]")
             time.sleep(attempt)  # 1s, then 2s
     raise AssertionError("unreachable")  # satisfies type checkers; loop always returns or raises
 
