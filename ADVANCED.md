@@ -115,6 +115,8 @@ only by you):
 - `config.yml` -- the settings
 - `.env` -- the Plex token
 - `logs/` -- the log file (one JSON line per event; only problems are logged)
+- `help-seen` -- an empty file: Help was opened once, so the main menu no
+  longer shows its "New here?" notice
 
 In the app folder:
 - `auto-chapter` -- the launcher (`~/.local/bin/auto-chapter` points to it)

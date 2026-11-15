@@ -110,6 +110,9 @@ computer. The share is mounted again after every restart.
 
 ## First use
 
+Open **5) Help** first: it explains what auto-chapter does and the words it
+uses. Then:
+
 1. In the main menu choose **1) Generate Auto Chapters**. You see how many
    movies need chapters.
 2. Choose **1) for movies with Plex End Credits** (recommended). Without Plex

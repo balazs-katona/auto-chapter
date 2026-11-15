@@ -1839,7 +1839,7 @@ def test_main_menu_says_what_each_item_does(
     lines = [line.strip() for line in capsys.readouterr().out.splitlines()]
     generate = lines.index("1) Generate Auto Chapters")
     assert lines[generate + 1] == "Adds Auto Chapters to the movies that need them"
-    about = lines.index("5) About")
+    about = lines.index("6) About")
     assert lines[about + 1] == "Version, log file, GitHub page and license"
     # 1.1.2 (owner): an empty line between the items, so each note
     # clearly belongs to the item above it.

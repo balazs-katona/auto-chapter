@@ -42,6 +42,7 @@ from auto_chapter.errors import (
 from auto_chapter.errors import (
     short_error as _short_error,
 )
+from auto_chapter.help import help_flow, help_seen
 from auto_chapter.logging_setup import get_logger
 from auto_chapter.models import Movie, ProcessingResult
 from auto_chapter.orchestrator import Orchestrator
@@ -2033,6 +2034,7 @@ def run_menu(orch: Orchestrator, config: Config) -> None:
         "Update Auto Chapters with missing Plex End Credits",
         "Find a movie by title",
         "Settings",
+        "Help",
         "About",
     ]
     # One line under each item, so the main menu explains itself without the
@@ -2042,10 +2044,25 @@ def run_menu(orch: Orchestrator, config: Config) -> None:
         "Redoes the Auto Chapters of these movies, now with the End Credits chapter",
         "One movie by title, also one with Auto Chapters; asks before writing",
         "Folder mappings, minimum movie length, chapter threshold, Plex connection",
+        "What auto-chapter does, how to start, and the words it uses",
         "Version, log file, GitHub page and license",
     ]
+    # Where the "Help was opened" mark is kept (the settings folder); None in
+    # tests that build a bare config.
+    config_path = getattr(config, "path", None)
+    settings_dir = config_path.parent if config_path is not None else None
 
     while True:
+        if not help_seen(settings_dir):
+            # Owner (1.2.0): a calm blue notice until Help was opened once.
+            console.print(
+                Panel(
+                    "New here? Open [bold]5) Help[/bold] first: what auto-chapter does, "
+                    "how to start, and the words it uses.",
+                    border_style="blue",
+                    style="blue",
+                )
+            )
         if not orch.plex.is_connected:
             reason = orch.plex.connection_error
             console.print(
@@ -2082,6 +2099,8 @@ def run_menu(orch: Orchestrator, config: Config) -> None:
             elif choice == 4:
                 _settings_flow(orch, config)
             elif choice == 5:
+                help_flow(settings_dir)
+            elif choice == 6:
                 _about_flow(config)
         except (KeyboardInterrupt, EOFError):
             # User pressed Ctrl+C / Ctrl+D somewhere -- treat as cancel back to main
