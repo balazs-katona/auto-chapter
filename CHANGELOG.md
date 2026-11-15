@@ -3,6 +3,30 @@
 The changes in each version of auto-chapter. Version numbers follow
 [Semantic Versioning](https://semver.org/).
 
+## 1.2.0 — 2026-11-15
+
+- Added: a Help menu -- what auto-chapter does, how to start, and the words
+  it uses. Until you open it once, the main menu shows a short notice
+  pointing to it.
+- Added: before you choose how many or which movies to process, the app
+  says what processing does: it writes into the movie files, takes a few
+  minutes per movie, and needs free space for one more copy of the movie.
+- Fixed: a short movie with only a few Auto Chapters came back as "needing
+  Auto Chapters" at every Generate. Now a movie with Auto Chapters is done,
+  however few they are (Find a movie by title can still redo it).
+- Fixed: the installer refused Plex tokens that contain - or _.
+- Fixed: running the installer again in the same terminal said "uv is
+  missing" and offered to install uv once more.
+- Changed: plainer words in many places -- "chapters of their own", the
+  minimum length shown in the table, the recommended choice marked in
+  Generate, Plex Pass mentioned where Plex End Credits are needed, correct
+  singular and plural counts.
+- Changed: Find sums up a long list of movies it can't process; when adding
+  or changing a folder, a path that is not used is asked again, and a folder
+  already mapped to another Plex folder is questioned.
+- Docs: the End Credits chapter needs Plex Pass, with Plex's "Generate
+  credits video markers" turned on.
+
 ## 1.1.2 — 2026-11-14
 
 - Changed: the menus are easier to read -- the item names are bold, with
