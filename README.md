@@ -6,13 +6,13 @@
 
 Most movie files come without chapters, so in Plex all you can do is drag
 the timeline. auto-chapter finds the scene changes in the MKV movies on your
-Plex Media Server with its own scene detection method, and writes chapter
+Plex Media Server with its advanced scene detection method, and writes chapter
 markers into the files. On any Plex player you can then jump from scene to
 scene, or straight to the end credits.
 
 ![Chapters made by auto-chapter, in the Plex player](docs/images/plex-chapters.jpg)
 
-- **Its own detection method**: it finds natural scene boundaries by
+- **Advanced detection method**: it finds natural scene boundaries by
   itself -- a fade to black first, the strongest visual cut where there is
   none -- and keeps the chapters evenly spread through the movie.
 - **End Credits chapter**: wherever Plex has found the end credits (Plex
@@ -99,7 +99,7 @@ your files" in ADVANCED.md.
 
 ## What it does
 
-**How it finds the chapters** (auto-chapter's own method):
+**How it finds the chapters** (auto-chapter's advanced method):
 
 1. The first chapter is the start of the movie.
 2. From minute 5 on, it examines the movie five minutes at a time. In each
