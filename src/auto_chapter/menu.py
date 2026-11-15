@@ -1999,7 +1999,7 @@ def _about_flow(config: Config) -> None:
             border_style="cyan",
         )
     )
-    console.print("\n  [cyan]0[/cyan]) Back to main menu")
+    console.print("\n  [cyan]0[/cyan]) Back")
     try:
         IntPrompt.ask("Choose", choices=["0"], default=0, show_choices=True, show_default=False)
     except (KeyboardInterrupt, EOFError):
@@ -2035,7 +2035,6 @@ def run_menu(orch: Orchestrator, config: Config) -> None:
         "Find a movie by title",
         "Settings",
         "Help",
-        "About",
     ]
     # One line under each item, so the main menu explains itself without the
     # README (owner, 2026-11-14). Same words as the screens behind them.
@@ -2044,8 +2043,7 @@ def run_menu(orch: Orchestrator, config: Config) -> None:
         "Redoes the Auto Chapters of these movies, now with the End Credits chapter",
         "One movie by title, also one with Auto Chapters; asks before writing",
         "Folder mappings, minimum movie length, chapter threshold, Plex connection",
-        "What auto-chapter does, how to start, and the words it uses",
-        "Version, log file, GitHub page and license",
+        "What auto-chapter does, how to start, the words it uses, and About",
     ]
     # Where the "Help was opened" mark is kept (the settings folder); None in
     # tests that build a bare config.
@@ -2099,9 +2097,9 @@ def run_menu(orch: Orchestrator, config: Config) -> None:
             elif choice == 4:
                 _settings_flow(orch, config)
             elif choice == 5:
-                help_flow(settings_dir)
-            elif choice == 6:
-                _about_flow(config)
+                # About is Help's last page (owner, 1.2.1): the main menu
+                # holds the work, Help everything about the program.
+                help_flow(settings_dir, config)
         except (KeyboardInterrupt, EOFError):
             # User pressed Ctrl+C / Ctrl+D somewhere -- treat as cancel back to main
             console.print("\n[yellow]Cancelled.[/yellow]")

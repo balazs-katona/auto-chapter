@@ -1,6 +1,6 @@
 # auto-chapter
 
-**v1.2.0**
+**v1.2.1**
 
 **Chapters for the movies on your Plex server, made automatically.**
 
@@ -141,8 +141,9 @@ Once running, `auto-chapter` gives you a numbered menu:
   movie is assumed to have a useful chapter list already), and your Plex
   connection.
 - **Help** explains in the app what auto-chapter does, how to start, and the
-  words it uses. Until you open it once, the main menu shows a short notice
-  pointing to it.
+  words it uses; its About page shows the version, where the log file is,
+  the GitHub page and the license. Until you open Help once, the main menu
+  shows a short notice pointing to it.
 
 For each movie it shows the chapters it found, then writes them into the file.
 This is The Matrix (1999), the movie in the picture at the top:

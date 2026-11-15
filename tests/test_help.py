@@ -30,7 +30,7 @@ def test_opening_help_hides_the_notice_for_good(tmp_path: Path, answers: list[in
     assert not help_mod.help_seen(tmp_path)
     answers.append(0)
 
-    help_mod.help_flow(tmp_path)
+    help_mod.help_flow(tmp_path, SimpleNamespace())
 
     assert help_mod.help_seen(tmp_path)
 
@@ -52,7 +52,7 @@ def test_every_help_page_opens_and_goes_back(
 ) -> None:
     answers.extend([page, 0, 0])
 
-    help_mod.help_flow(tmp_path)
+    help_mod.help_flow(tmp_path, SimpleNamespace())
 
     assert expected in " ".join(capsys.readouterr().out.split())
 
@@ -68,7 +68,7 @@ def test_the_main_menu_shows_the_notice_until_help_was_opened(
 
     out = capsys.readouterr().out
     assert out.count("New here? Open 5) Help first") == 1  # before Help, not after
-    assert "5) Help" in out and "6) About" in out
+    assert "5) Help" in out and "6)" not in out
 
 
 def test_the_help_text_matches_the_detection_settings() -> None:
@@ -86,3 +86,18 @@ def test_the_words_use_the_real_chapter_names() -> None:
     assert f'"{AUTO_CHAPTER_PREFIX} 1"' in words["Auto Chapters"]
     assert f'"{CREDITS_CHAPTER_NAME}"' in words["End Credits chapter"]
     assert "Plex Pass" in words["Plex End Credits"]
+
+
+def test_about_is_helps_last_page(
+    tmp_path: Path, answers: list[int], capsys: pytest.CaptureFixture[str]
+) -> None:
+    """1.2.1 (owner): About moved from the main menu into Help."""
+    config = SimpleNamespace(log_file_path=lambda: tmp_path / "logs" / "auto-chapter.log")
+    answers.extend([4, 0, 0])
+
+    help_mod.help_flow(tmp_path, config)
+
+    out = " ".join(capsys.readouterr().out.split())
+    assert "4) About Version, log file, GitHub page and license" in out
+    assert "https://github.com/balazs-katona/auto-chapter" in out
+    assert "GPL-3.0-or-later" in out

@@ -3,6 +3,12 @@
 The changes in each version of auto-chapter. Version numbers follow
 [Semantic Versioning](https://semver.org/).
 
+## 1.2.1 — 2026-11-15
+
+- Changed: About moved into the Help menu (Help → About), so the main menu
+  holds the work, and Help everything about the program.
+- Docs: the README calls the detection "auto-chapter's advanced method".
+
 ## 1.2.0 — 2026-11-15
 
 - Added: a Help menu -- what auto-chapter does, how to start, and the words

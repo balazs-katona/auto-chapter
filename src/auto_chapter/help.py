@@ -9,11 +9,15 @@ match what the code does -- check it when the behaviour changes.
 
 import contextlib
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from rich.prompt import IntPrompt
 from rich.table import Table
 
 from auto_chapter.console import console
+
+if TYPE_CHECKING:
+    from auto_chapter.config import Config
 
 # The main menu shows a calm blue notice until Help was opened once; this
 # file in the settings folder remembers that it was (owner chose "until opened
@@ -153,16 +157,21 @@ def _back() -> bool:
     return True
 
 
-def help_flow(settings_dir: Path | None) -> None:
-    """The Help menu. Opening it once hides the main menu's notice for good."""
-    # Imported here: menu imports this module, and _show_options lives there.
-    from auto_chapter.menu import _show_options
+def help_flow(settings_dir: Path | None, config: "Config") -> None:
+    """The Help menu. Opening it once hides the main menu's notice for good.
+
+    Its last page is About (version, log file, GitHub page, license), moved
+    here from the main menu in 1.2.1 (owner).
+    """
+    # Imported here: menu imports this module, and these live there.
+    from auto_chapter.menu import _about_flow, _show_options
 
     _remember_seen(settings_dir)
     pages = [
         ("What auto-chapter does", WHAT_IT_DOES),
         ("How to start", HOW_TO_START),
         ("Words used in the app", None),
+        ("About", None),
     ]
     while True:
         choice = _show_options(
@@ -174,10 +183,14 @@ def help_flow(settings_dir: Path | None) -> None:
                 "The problem it solves, and how",
                 "The first time, and what to use later",
                 "What the words on the screens mean",
+                "Version, log file, GitHub page and license",
             ],
         )
         if choice == 0:
             return
+        if choice == 4:
+            _about_flow(config)
+            continue
         title, text = pages[choice - 1]
         console.print(f"\n[bold]{title}[/bold]\n")
         console.print(_words_table() if text is None else text)
