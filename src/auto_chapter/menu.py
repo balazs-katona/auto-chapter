@@ -5,6 +5,7 @@
 import contextlib
 import re
 import textwrap
+from collections import Counter
 from collections.abc import Iterator
 from functools import partial
 from pathlib import Path
@@ -65,6 +66,15 @@ log = get_logger(__name__)
 # Rich's own message for a non-number at a number prompt is technical; every
 # number prompt in the app uses IntPrompt, so it is replaced once, here.
 IntPrompt.validate_error_message = "[prompt.invalid]Please type a number."
+# And its message for a number that isn't offered (1.1.2 VM test: the two
+# messages sat next to each other in different styles).
+IntPrompt.illegal_choice_message = "[prompt.invalid.choice]Please type one of the numbers shown."
+Prompt.illegal_choice_message = "[prompt.invalid.choice]Please type one of the choices shown."
+
+def _count(n: int, one: str, many: str) -> str:
+    """ "1 movie", "2 movies" (1.1.2 VM test: "2 movie(s)")."""
+    return f"{n} {one if n == 1 else many}"
+
 
 # Standard cancel hint shown wherever the user can back out.
 CANCEL_HINT = "[dim](type 0 to cancel)[/dim]"
@@ -127,13 +137,18 @@ def _show_options(
         raise
 
 
-def _ask_text(prompt: str, empty_hint: str | None = None) -> str:
+def _ask_text(
+    prompt: str, empty_hint: str | None = None, retry_prompt: str | None = None
+) -> str:
     """Ask for free-text input. Returns empty string only on '0', Ctrl+C, or Ctrl+D.
 
     Empty Enter re-prompts with a hint (does not cancel). This makes cancellation
     a deliberate action rather than an accidental Enter.
     """
     hint = empty_hint or "Please type something, or 0 to cancel."
+    # retry_prompt: a long prompt is not shown again after an empty answer,
+    # the hint already says what to type (1.1.2 VM test: Find re-printed its
+    # whole 7-line intro).
     while True:
         try:
             answer = Prompt.ask(
@@ -149,6 +164,8 @@ def _ask_text(prompt: str, empty_hint: str | None = None) -> str:
         if answer:
             return answer
         console.print(f"[yellow]{hint}[/yellow]")
+        if retry_prompt:
+            prompt = retry_prompt
 
 
 # Indent and width for the explanation printed under a numbered option.
@@ -640,7 +657,7 @@ def _ask_process_without_credits(picked: list[Movie]) -> list[Movie] | None:
     if single:
         lead = f"{escape(picked[0].display)} doesn't have Plex End Credits yet."
     else:
-        lead = "None of the movies you selected have Plex End Credits yet."
+        lead = "None of the movies you selected has Plex End Credits yet."
 
     console.print(f"\n{lead}")
     console.print(f"\n[bold]How would you like to handle {obj}?[/bold]")
@@ -703,7 +720,7 @@ def _show_list_and_pick(candidates: list[Movie], orch: Orchestrator) -> None:
         break
 
     picked = [candidates[i - 1] for i in indices]
-    console.print(f"\nSelected {len(picked)} movie(s):")
+    console.print(f"\nSelected {_count(len(picked), 'movie', 'movies')}:")
     for mv in picked:
         console.print(f"  - {mv.display}")
 
@@ -752,11 +769,12 @@ def _process_first_n(
     else:
         pool = list(candidates)
         if any(not mv.has_plex_credits for mv in pool):
-            # Processing these means doing the work twice: say so once.
+            # Processing these means doing the work twice: say so once. The
+            # option's note already said "no End Credits chapter now", so only
+            # the way to add it later (1.1.2 VM test: the text was repeated).
             console.print(
-                "\n[dim]The movies without Plex End Credits get no End Credits chapter "
-                "now. Once Plex has detected their End Credits, run the Update menu "
-                "yourself to add it.[/dim]"
+                "\n[dim]Once Plex has detected their End Credits (this needs Plex Pass), "
+                "run the Update menu to add the End Credits chapter.[/dim]"
             )
 
     default = len(pool)
@@ -853,7 +871,7 @@ def _generate_auto_chapters_flow(orch: Orchestrator, config: Config) -> None:
         # time here would just be visual noise.
         return
     should_proceed, known_unreachable = _check_folder_reachability(config)
-    if not should_proceed:
+    if not should_proceed or not _plex_ready(orch):
         return
     try:
         with _scan_progress("Scanning Plex...") as on_progress:
@@ -953,7 +971,7 @@ def _update_end_credits_flow(orch: Orchestrator, config: Config) -> None:
         # covers this, no need to repeat it here.
         return
     should_proceed, known_unreachable = _check_folder_reachability(config)
-    if not should_proceed:
+    if not should_proceed or not _plex_ready(orch):
         return
     try:
         with _scan_progress("Scanning Plex for movies needing an End Credits chapter...") as on_progress:
@@ -992,11 +1010,14 @@ def _update_end_credits_flow(orch: Orchestrator, config: Config) -> None:
         )
         console.print(panel)
 
-        console.print(
-            "\n[dim]Plex has since detected the End Credits start for these movies.\n"
-            "Regenerating updates the file with an End Credits chapter at the right spot\n"
-            "(and refreshes the existing Auto Chapters).[/dim]"
-        )
+        if candidates:
+            # Only with movies to update (1.1.2 VM test: with none it still
+            # spoke of "these movies").
+            console.print(
+                "\n[dim]These movies got their Auto Chapters before Plex had detected their\n"
+                "End Credits. Updating redoes their Auto Chapters, now with the End Credits\n"
+                "chapter at the right spot.[/dim]"
+            )
 
         if not candidates:
             if stats.total_movies == 0:
@@ -1069,15 +1090,44 @@ def _skip_reason_text(skipped: SkippedMatch) -> str:
     return _SKIP_REASON_TEXT[skipped.reason]
 
 
+# More left-out matches than this are summed up by reason, not listed.
+_SKIPPED_LIST_MAX = 10
+
+
 def _print_skipped_matches(skipped: list[SkippedMatch]) -> None:
-    """List title-search matches that were left out, each with its reason."""
-    for sm in skipped:
-        console.print(f"  - {escape(sm.display)} -- {_skip_reason_text(sm)}")
+    """List title-search matches that were left out, each with its reason.
+
+    A long list (a short search like "e" left out ~700 movies in the 1.1.2
+    VM test) is summed up by reason instead.
+    """
+    if len(skipped) <= _SKIPPED_LIST_MAX:
+        for sm in skipped:
+            console.print(f"  - {escape(sm.display)} -- {_skip_reason_text(sm)}")
+    else:
+        by_reason = Counter(
+            "already have chapters from another source"
+            if sm.reason is SkipReason.OTHER_CHAPTERS
+            else _SKIP_REASON_TEXT[sm.reason]
+            for sm in skipped
+        )
+        for reason, n in by_reason.most_common():
+            console.print(f"  - {_count(n, 'movie', 'movies')} -- {reason}")
+        console.print("[dim]Type more of the title to see them one by one.[/dim]")
     if any(sm.reason is SkipReason.OTHER_CHAPTERS for sm in skipped):
         console.print(
             "[dim]A chapter list from another source that is probably useful is left alone.\n"
             "Settings > Chapter threshold sets how many chapters it takes to assume that.[/dim]"
         )
+
+def _plex_ready(orch: Orchestrator) -> bool:
+    """Reconnect to Plex before a scan if needed. False if it is still down:
+    the main menu's banner then says why. (1.1.2 VM test: with Plex down,
+    "Scanning Plex..." still appeared, then the same error twice.)"""
+    if orch.plex.is_connected:
+        return True
+    orch.plex.reconnect()
+    return bool(orch.plex.is_connected)
+
 
 def _find_by_title(orch: Orchestrator) -> None:
     if not any(m.enabled for m in orch.config.paths):
@@ -1085,7 +1135,7 @@ def _find_by_title(orch: Orchestrator) -> None:
         # covers this, no need to repeat it here.
         return
     should_proceed, known_unreachable = _check_folder_reachability(orch.config)
-    if not should_proceed:
+    if not should_proceed or not _plex_ready(orch):
         return
     first_search = True
     while True:
@@ -1100,6 +1150,7 @@ def _find_by_title(orch: Orchestrator) -> None:
             "from another source is probably useful is left alone. Settings > Chapter\n"
             "threshold sets how many chapters it takes to assume that.[/dim]",
             empty_hint="Please type a movie title to search for, or 0 to cancel.",
+            retry_prompt="Type a movie title",
         )
         if not title:
             return  # back to main menu
@@ -1490,7 +1541,7 @@ def _remove_folder_mapping(config: Config) -> None:
 
     try:
         confirm = Prompt.ask(
-            f"Remove {escape(m.local)} -> {escape(m.plex)}? (y/n)",
+            f"Remove {escape(m.local)} -> {escape(m.plex)}?",
             choices=["y", "n"],
             case_sensitive=False,
         )
@@ -1505,7 +1556,9 @@ def _remove_folder_mapping(config: Config) -> None:
     console.print(f"[green]OK[/green] {escape(m.local)} -> {escape(m.plex)} removed.")
 
 
-def _ask_path_on_this_computer(orch: Orchestrator, plex_path: str) -> str | None:
+def _ask_path_on_this_computer(
+    orch: Orchestrator, plex_path: str, mappings: list[PathMapping] | None = None
+) -> str | None:
     """Ask where THIS computer reaches Plex folder `plex_path` (Plex may run elsewhere).
 
     Returns the path with a trailing "/", or None if the user cancelled or
@@ -1518,6 +1571,22 @@ def _ask_path_on_this_computer(orch: Orchestrator, plex_path: str) -> str | None
         path = _ask_one_path()
         if path is None:
             return None
+        other = next(
+            (m.plex for m in mappings or [] if m.local == path and m.plex != plex_path),
+            None,
+        )
+        if other is not None:
+            # 1.1.2 VM test: two Plex folders could point at one folder here,
+            # only "Found 0 of 17" hinted at it.
+            console.print(
+                f"[yellow]{escape(path)} is already mapped to the Plex folder "
+                f"{escape(other)}.[/yellow]"
+            )
+            also = _yes("Use it for this Plex folder too?")
+            if also is None:
+                return None
+            if not also:
+                continue
         reachable = check_dir_with_timeout(path)
         if reachable is True:
             if _movies_are_here(orch, plex_path, path):
@@ -1534,16 +1603,24 @@ def _ask_path_on_this_computer(orch: Orchestrator, plex_path: str) -> str | None
             console.print(
                 "[dim]It may be on a mount that's present but not responding.[/dim]"
             )
-        try:
-            keep = Prompt.ask(
-                "Use it anyway?",
-                choices=["y", "n"],
-                case_sensitive=False,
-            )
-        except (KeyboardInterrupt, EOFError):
-            console.print()
+        keep = _yes("Use it anyway?")
+        if keep is None:
             return None
-        return path if keep.lower() == "y" else None
+        if keep:
+            return path
+        # "n": another path, like the installer (1.1.2 VM test: here it went
+        # back to the mapping list).
+        console.print("[dim]Not used. Type another path, or 0 to cancel.[/dim]")
+
+
+def _yes(question: str) -> bool | None:
+    """A y/n question: True, False, or None on Ctrl+C / Ctrl+D."""
+    try:
+        answer = Prompt.ask(question, choices=["y", "n"], case_sensitive=False)
+    except (KeyboardInterrupt, EOFError):
+        console.print()
+        return None
+    return answer.lower() == "y"
 
 
 def _movies_are_here(orch: Orchestrator, plex_path: str, path: str) -> bool:
@@ -1626,7 +1703,7 @@ def _change_folder_mapping(config: Config, orch: Orchestrator) -> None:
     console.print(f"\n[bold]Plex path:[/bold] {escape(m.plex)}")
     console.print(f"[bold]Now on this computer:[/bold] {escape(m.local)}")
 
-    new_path = _ask_path_on_this_computer(orch, m.plex)
+    new_path = _ask_path_on_this_computer(orch, m.plex, config.paths)
     if new_path is None:
         return
     if new_path == m.local:
@@ -1662,7 +1739,9 @@ def _add_folder_mapping(config: Config, orch: Orchestrator) -> list[str] | None:
         )
         return all_folders
 
-    console.print(f"\n[bold]Found {len(unmapped)} unmapped folder(s) in Plex:[/bold]")
+    console.print(
+        f"\n[bold]Found {_count(len(unmapped), 'unmapped folder', 'unmapped folders')} in Plex:[/bold]"
+    )
     console.print("  [cyan]0[/cyan]) Cancel")
     for i, f in enumerate(unmapped, start=1):
         console.print(f"  [cyan]{i}[/cyan]) {f}")
@@ -1683,7 +1762,7 @@ def _add_folder_mapping(config: Config, orch: Orchestrator) -> list[str] | None:
     plex_path = unmapped[choice - 1]
     console.print(f"\n[bold]Plex path:[/bold] {escape(plex_path)}")
 
-    local_path = _ask_path_on_this_computer(orch, plex_path)
+    local_path = _ask_path_on_this_computer(orch, plex_path, config.paths)
     if local_path is None:
         return all_folders
 

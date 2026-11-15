@@ -19,13 +19,35 @@ warn()  { echo -e "${YELLOW}$1${NC}"; }
 err()   { echo -e "${RED}$1${NC}"; }
 info()  { echo -e "${BLUE}$1${NC}"; }
 step()  { echo -e "\n${BOLD}$1${NC}"; }
+# The same, indented: lines that belong to one folder in the folder loop.
+ok_in()   { echo -e "  ${GREEN}OK${NC}  $1"; }
+warn_in() { echo -e "  ${YELLOW}$1${NC}"; }
+info_in() { echo -e "  ${BLUE}$1${NC}"; }
+# Is $1 one of the other arguments? (the local paths mapped so far)
+path_already_used() {
+    local wanted="$1" p
+    shift
+    for p in "$@"; do [ "$p" = "$wanted" ] && return 0; done
+    return 1
+}
+# "1 folder", "2 folders"
+plural() { if [ "$1" = 1 ]; then echo "1 $2"; else echo "$1 $3"; fi; }
 
 # Allow the user to cancel cleanly with Ctrl+C at any prompt
 trap 'echo; echo -e "${YELLOW}Installation cancelled.${NC}"; exit 130' INT
 
 # The user's PATH as it was. This script adds ~/.local/bin to its own PATH
-# after installing uv, so the end message must not judge by that one.
+# (below), so the end message must not judge by that one.
 USER_PATH="$PATH"
+
+# uv's own installer puts uv into ~/.local/bin (or $XDG_BIN_HOME), which a
+# terminal opened before that has no idea of. Look there from the start: a
+# second run in the same terminal used to say "uv is missing" and offer to
+# install it again (1.1.2 VM test, Ubuntu). It also keeps uv's installer
+# quiet: it sees its folder on the PATH, leaves the shell files alone and
+# skips its "To add ... to your PATH, run source ..." hint -- this script
+# adds that line itself at the end (ensure_bin_on_path).
+export PATH="${XDG_BIN_HOME:-$HOME/.local/bin}:$PATH"
 
 PROJECT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 # Everything below (uv sync, config.yml, .env) works relative to the project
@@ -210,9 +232,6 @@ if [ ${#missing[@]} -gt 0 ]; then
         fi
     done
 
-    # uv's own installer puts it into ~/.local/bin (or $XDG_BIN_HOME), which
-    # this shell may not have on its PATH yet.
-    export PATH="${XDG_BIN_HOME:-$HOME/.local/bin}:$PATH"
     step "Checking required system tools again..."
     check_all_tools
     if [ ${#missing[@]} -gt 0 ]; then
@@ -312,10 +331,10 @@ movies_are_here() {
     total=${BASH_REMATCH[2]}
     [ "$total" -gt 0 ] || return 0
     if [ "$found" -gt 0 ]; then
-        ok "Found $found of $total Plex movies in this folder."
+        ok_in "Found $found of $total Plex movies in this folder."
         return 0
     fi
-    warn "Found 0 of $total Plex movies in this folder. Is the path right?"
+    warn_in "Found 0 of $total Plex movies in this folder. Is the path right?"
     echo "  1) Enter another path"
     echo "  2) Use it anyway"
     while true; do
@@ -639,7 +658,7 @@ PYEOF
 
     # Show what was found
     echo
-    ok "Found $folder_count movie folder(s) in Plex:"
+    ok "Found $(plural "$folder_count" "movie folder" "movie folders") in Plex:"
     for i in "${!plex_folders[@]}"; do
         echo -e "  $((i+1))) ${BLUE}${plex_folders[$i]}${NC}"
     done
@@ -660,7 +679,7 @@ PYEOF
                 warn "(this is unusual if Plex runs here -- check that the path is reachable)"
             fi
         done
-        ok "All $folder_count folder(s) mapped"
+        ok "$(plural "$folder_count" "folder" "folders") mapped"
     else
         # Ask per folder, with explicit Skip option
         echo
@@ -689,7 +708,7 @@ PYEOF
                 done
 
                 if [ "$action" = "2" ]; then
-                    info "Folder $((i+1)) skipped"
+                    info_in "Folder $((i+1)) skipped"
                     continue 2
                 fi
 
@@ -725,12 +744,19 @@ PYEOF
                     fi
                     [[ "$l_path" != */ ]] && l_path="${l_path}/"
 
+                    # One folder here for two Plex folders is a typo (1.1.2 VM test)
+                    if path_already_used "$l_path" "${local_paths[@]}"; then
+                        warn_in "Path '$l_path' is already used for another Plex folder."
+                        echo "  Type this folder's own path, or 0 to go back."
+                        continue
+                    fi
+
                     if [ -d "$l_path" ]; then
                         # 1 = none of Plex's movies are there, another path wanted
                         movies_are_here "$p_path" "$l_path" || continue
                         break
                     fi
-                    warn "Path '$l_path' does not exist on this computer."
+                    warn_in "Path '$l_path' does not exist on this computer."
                     echo "  This is fine if the folder will be mounted later (e.g. NAS not connected yet)."
                     while true; do
                         ask "  Use it anyway? (y/n): " yn
@@ -760,7 +786,7 @@ PYEOF
 
             final_plex_paths+=("$p_path")
             local_paths+=("$l_path")
-            ok "Mapped: $p_path  ->  $l_path"
+            ok_in "Mapped: $p_path  ->  $l_path"
         done
     fi
 
@@ -815,7 +841,7 @@ PYEOF
     (umask 077; echo "PLEX_TOKEN=$plex_token" > "$ENV_FILE")
     chmod 600 "$ENV_FILE"
 
-    ok "Configuration saved to $CONF_DIR (${#final_plex_paths[@]} folder mapping(s))"
+    ok "Configuration saved to $CONF_DIR ($(plural "${#final_plex_paths[@]}" "folder mapping" "folder mappings"))"
 fi
 
 # --- 4. Quick verification ---

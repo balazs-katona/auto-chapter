@@ -228,7 +228,7 @@ def test_credits_filter_none_with_credits_wording(
     _ask_credits_filter([_movie("A", False), _movie("B", False)])
 
     out = capsys.readouterr().out
-    assert "None of the movies you selected have Plex End Credits yet." in out
+    assert "None of the movies you selected has Plex End Credits yet." in out
     assert "run the Update menu yourself" in " ".join(out.split())  # the note wraps
     assert "Process them anyway" in out
 
@@ -357,9 +357,14 @@ def test_first_n_all_movies_counts_from_the_full_list_and_says_what_it_means(
     assert [text for text, _, _ in prompt.asked] == ["Number"]
     assert prompt.asked[0][2] == 10
     assert batch.calls == [["M01", "M02", "M03", "M04", "M05"]]
-    out = capsys.readouterr().out
-    assert "The movies without Plex End Credits get no End Credits chapter now." in out
-    assert "run the Update menu yourself to add it" in out
+    out = " ".join(capsys.readouterr().out.split())
+    # The option's own note says "no End Credits chapter now"; here only the
+    # way to add it later (1.1.2 VM test: it was said twice).
+    assert "no End Credits chapter now" not in out
+    assert (
+        "Once Plex has detected their End Credits (this needs Plex Pass), "
+        "run the Update menu to add the End Credits chapter." in out
+    )
 
 
 def test_first_n_all_movies_with_end_credits_says_nothing_extra(
@@ -540,7 +545,7 @@ def confirm_flow(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
     orch = SimpleNamespace(
         detect_movie=detect_movie,
         write_movie=write_movie,
-        plex=SimpleNamespace(trigger_analyze=lambda _mv: True),
+        plex=SimpleNamespace(is_connected=True, trigger_analyze=lambda _mv: True),
     )
     state.orch = orch
 
@@ -718,7 +723,7 @@ def find_flow(monkeypatch: pytest.MonkeyPatch, prompt: SimpleNamespace) -> Simpl
             paths=[SimpleNamespace(enabled=True)],
             detection=SimpleNamespace(chapter_threshold=4, min_duration_seconds=0),
         ),
-        plex=SimpleNamespace(iter_movie_candidates=fake_scan),
+        plex=SimpleNamespace(is_connected=True, iter_movie_candidates=fake_scan),
     )
     monkeypatch.setattr(menu, "_check_folder_reachability", lambda _cfg: (True, []))
 
@@ -1007,7 +1012,7 @@ def mapping_flow(monkeypatch: pytest.MonkeyPatch, prompt: SimpleNamespace) -> Si
         return match
 
     state.orch = SimpleNamespace(
-        plex=SimpleNamespace(list_movie_folders=list_movie_folders, folder_match=folder_match)
+        plex=SimpleNamespace(is_connected=True, list_movie_folders=list_movie_folders, folder_match=folder_match)
     )
     return state
 
@@ -1171,10 +1176,12 @@ def test_change_to_the_same_path_says_so_and_saves_nothing(
 def test_change_to_an_unreachable_path_is_kept_only_if_the_user_confirms(
     mapping_flow: SimpleNamespace, prompt: SimpleNamespace, reachable: bool | None
 ) -> None:
-    """The NAS may simply not be mounted yet, so "yes" is allowed."""
+    """The NAS may simply not be mounted yet, so "yes" is allowed. After "no"
+    the path is asked again, like in the installer (1.1.2 VM test); "" here
+    stands for 0 (cancel)."""
     mapping_flow.reachable = reachable
     prompt.answers = [1]
-    mapping_flow.typed = ["/mnt/not-mounted/Filmek"]
+    mapping_flow.typed = ["/mnt/not-mounted/Filmek", ""]
     mapping_flow.yn = ["n"]
 
     menu._change_folder_mapping(mapping_flow.config, mapping_flow.orch)
@@ -1670,7 +1677,7 @@ def _scan_flow_orch(ignored: list[str]) -> SimpleNamespace:
             paths=[SimpleNamespace(enabled=True)],
             detection=SimpleNamespace(chapter_threshold=4, min_duration_seconds=0),
         ),
-        plex=SimpleNamespace(
+        plex=SimpleNamespace(is_connected=True,
             server_name="TEST",
             iter_movie_candidates=lambda **_k: ([], ScanStats(ignored_mappings=list(ignored))),
             iter_credits_update_candidates=lambda **_k: (
@@ -2077,7 +2084,7 @@ def test_ctrl_c_while_testing_a_plex_address_goes_back_to_plex_connection(
 ) -> None:
     monkeypatch.setattr(menu, "_change_plex_url", _raise_ctrl_c)
     prompt.answers = [1, 0]  # Change URL (interrupted while testing), then Back
-    config = SimpleNamespace(plex=SimpleNamespace(url="http://plex:32400", token="abcdefgh"))
+    config = SimpleNamespace(plex=SimpleNamespace(is_connected=True, url="http://plex:32400", token="abcdefgh"))
 
     menu._plex_connection(config, SimpleNamespace())
 
@@ -2200,7 +2207,7 @@ def _flow_with_stats(**counts: int) -> SimpleNamespace:
             paths=[SimpleNamespace(enabled=True)],
             detection=SimpleNamespace(chapter_threshold=4, min_duration_seconds=0),
         ),
-        plex=SimpleNamespace(
+        plex=SimpleNamespace(is_connected=True,
             server_name="TEST",
             iter_movie_candidates=lambda **_k: ([], ScanStats(**counts)),
             iter_credits_update_candidates=lambda **_k: ([], CreditsScanStats(**counts)),
@@ -2390,3 +2397,142 @@ def test_shutdown_messages_say_movie_or_batch(
         assert "The system will power off after this batch finishes." in out
         assert "The batch will continue without shutting down." in out
         assert "no movies were processed successfully" in out
+
+
+# --- 1.1.2 VM test findings ------------------------------------------------
+
+
+def test_update_with_nothing_to_update_does_not_speak_of_these_movies(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    orch = _flow_with_stats(total_movies=1336)
+    monkeypatch.setattr(menu, "_check_folder_reachability", lambda _cfg: (True, []))
+
+    menu._update_end_credits_flow(orch, orch.config)
+
+    out = capsys.readouterr().out
+    assert "these movies" not in out.lower()
+    assert "No movies need an End Credits update right now." in out
+
+
+def test_update_with_movies_to_update_says_what_updating_does(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], prompt: SimpleNamespace
+) -> None:
+    orch = _flow_with_stats(total_movies=1336)
+    orch.plex.iter_credits_update_candidates = lambda **_k: (
+        [_movie("M01", True)],
+        CreditsScanStats(total_movies=1336),
+    )
+    monkeypatch.setattr(menu, "_check_folder_reachability", lambda _cfg: (True, []))
+    prompt.answers = [0]
+
+    menu._update_end_credits_flow(orch, orch.config)
+
+    out = " ".join(capsys.readouterr().out.split())
+    assert "These movies got their Auto Chapters before Plex had detected their End Credits." in out
+
+
+def test_with_plex_down_a_scan_is_not_started(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The main menu's banner says why; no "Scanning Plex..." and no second error."""
+    orch = _flow_with_stats(total_movies=1)
+    orch.plex.is_connected = False
+    tried: list[str] = []
+    orch.plex.reconnect = lambda: tried.append("reconnect")
+    orch.plex.iter_movie_candidates = lambda **_k: pytest.fail("scanned with Plex down")
+    monkeypatch.setattr(menu, "_check_folder_reachability", lambda _cfg: (True, []))
+
+    menu._generate_auto_chapters_flow(orch, orch.config)
+
+    assert tried == ["reconnect"]
+    out = capsys.readouterr().out
+    assert "Scanning" not in out
+    assert "Couldn't scan" not in out
+
+
+def test_counts_are_said_in_the_singular_and_plural() -> None:
+    assert menu._count(1, "movie", "movies") == "1 movie"
+    assert menu._count(2, "movie", "movies") == "2 movies"
+
+
+def test_a_long_list_of_left_out_matches_is_summed_up(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from auto_chapter.plex_client import SkippedMatch, SkipReason
+
+    skipped = [
+        SkippedMatch(title=f"T{i}", year=2000, reason=SkipReason.OTHER_CHAPTERS, chapter_count=8 + i)
+        for i in range(12)
+    ] + [SkippedMatch(title="S", year=2000, reason=SkipReason.TOO_SHORT, chapter_count=0)]
+
+    menu._print_skipped_matches(skipped)
+
+    out = " ".join(capsys.readouterr().out.split())
+    assert "12 movies -- already have chapters from another source" in out
+    assert "1 movie -- shorter than the Minimum movie length in Settings" in out
+    assert "T3" not in out
+
+
+def test_a_short_list_of_left_out_matches_is_listed(capsys: pytest.CaptureFixture[str]) -> None:
+    from auto_chapter.plex_client import SkippedMatch, SkipReason
+
+    menu._print_skipped_matches(
+        [SkippedMatch(title="Heat", year=1995, reason=SkipReason.TOO_SHORT, chapter_count=0)]
+    )
+
+    assert "Heat (1995) -- shorter than the Minimum movie length" in capsys.readouterr().out
+
+
+def test_a_folder_already_mapped_to_another_plex_folder_is_questioned(
+    mapping_flow: SimpleNamespace, prompt: SimpleNamespace, capsys: pytest.CaptureFixture[str]
+) -> None:
+    other = PathMapping(plex="/share/Bence/", local="/mnt/elsewhere/Filmek/")
+    mapping_flow.config.paths.append(other)
+    prompt.answers = [1]
+    mapping_flow.typed = ["/mnt/elsewhere/Filmek", ""]
+    mapping_flow.yn = ["n"]
+
+    menu._change_folder_mapping(mapping_flow.config, mapping_flow.orch)
+
+    out = " ".join(capsys.readouterr().out.split())
+    assert "/mnt/elsewhere/Filmek/ is already mapped to the Plex folder /share/Bence/." in out
+    assert mapping_flow.config.paths[0].local == "/mnt/old/Filmek/"
+
+
+def test_after_an_empty_answer_the_long_question_is_not_repeated(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    asked: list[str] = []
+    answers = ["", "Heat"]
+
+    def fake_ask(text: str, **_k: object) -> str:
+        asked.append(text)
+        return answers.pop(0)
+
+    monkeypatch.setattr(menu.Prompt, "ask", fake_ask)
+
+    assert menu._ask_text("Long intro\nmore", empty_hint="Type it.", retry_prompt="Short") == "Heat"
+    assert asked[0].startswith("Long intro")
+    assert asked[1].startswith("Short")
+
+
+def test_a_number_that_is_not_offered_gets_our_own_message() -> None:
+    assert "Please type one of the numbers shown." in menu.IntPrompt.illegal_choice_message
+
+
+def test_the_remove_question_shows_y_n_once(
+    mapping_flow: SimpleNamespace, prompt: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    asked: list[str] = []
+
+    def fake_ask(text: str, **_k: object) -> str:
+        asked.append(text)
+        return "n"
+
+    monkeypatch.setattr(menu.Prompt, "ask", fake_ask)
+    prompt.answers = [1]
+
+    menu._remove_folder_mapping(mapping_flow.config)
+
+    assert asked and "(y/n)" not in asked[0]

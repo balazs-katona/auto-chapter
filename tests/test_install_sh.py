@@ -221,7 +221,7 @@ def _movies_are_here(
     )
     uv.chmod(0o755)
     text = INSTALL_SH.read_text(encoding="utf-8")
-    helpers = "\n".join(m.group(0) for m in re.finditer(r"^(ok|warn)\(\).*$", text, re.MULTILINE))
+    helpers = "\n".join(m.group(0) for m in re.finditer(r"^(ok|warn|info|ok_in|warn_in|info_in|plural)\(\).*$", text, re.MULTILINE))
     script = (
         f"{helpers}\n{_bash_function('ask')}\n{_bash_function('movies_are_here')}\n"
         f'PATH="{bin_dir}:$PATH"\nplex_url="http://plex:32400"\nplex_token="abc"\n'
@@ -301,7 +301,7 @@ def _path_question(answers: str) -> str:
     end = text.index('                    [[ "$l_path" != */ ]] && l_path="${l_path}/"', start)
     loop = text[start:end]
     script = (
-        "\n".join(m.group(0) for m in re.finditer(r"^(ok|warn)\(\).*$", text, re.MULTILINE))
+        "\n".join(m.group(0) for m in re.finditer(r"^(ok|warn|info|ok_in|warn_in|info_in|plural)\(\).*$", text, re.MULTILINE))
         + f"\n{_bash_function('ask')}\n"
         + 'trim() { echo "$1"; }\n'
         + f"while true; do\n{loop}\n"
@@ -342,7 +342,7 @@ def _where_is_plex(folders: list[str], answers: str) -> str:
     text = INSTALL_SH.read_text(encoding="utf-8")
     start = text.index("    # Ask once: same machine or different.")
     end = text.index("    # Show what was found", start)
-    helpers = "\n".join(m.group(0) for m in re.finditer(r"^(ok|warn)\(\).*$", text, re.MULTILINE))
+    helpers = "\n".join(m.group(0) for m in re.finditer(r"^(ok|warn|info|ok_in|warn_in|info_in|plural)\(\).*$", text, re.MULTILINE))
     quoted = " ".join(f'"{f}"' for f in folders)
     script = (
         f"{helpers}\n{_bash_function('ask')}\nplex_folders=({quoted})\n"
@@ -529,3 +529,30 @@ def test_the_installer_knows_a_plex_token(token: str, accepted: bool) -> None:
     script = f'{_bash_function("looks_like_token")}\nlooks_like_token "$1"\n'
     result = subprocess.run(["bash", "-c", script, "bash", token], check=False)
     assert (result.returncode == 0) is accepted
+
+
+def test_the_installer_looks_for_uv_in_local_bin_before_checking_tools() -> None:
+    """1.1.2 VM test: a second run in the same terminal said "uv is missing"."""
+    text = INSTALL_SH.read_text(encoding="utf-8")
+    export = text.index('export PATH="${XDG_BIN_HOME:-$HOME/.local/bin}:$PATH"')
+    assert text.index('USER_PATH="$PATH"') < export
+    assert export < text.index('step "Checking required system tools..."')
+
+
+def _one_line_helpers() -> str:
+    text = INSTALL_SH.read_text(encoding="utf-8")
+    return "\n".join(m.group(0) for m in re.finditer(r"^plural\(\).*$", text, re.MULTILINE))
+
+
+@pytest.mark.parametrize(("n", "said"), [("1", "1 folder mapping"), ("2", "2 folder mappings")])
+def test_the_installer_says_counts_in_singular_and_plural(n: str, said: str) -> None:
+    script = f'{_one_line_helpers()}\nplural "{n}" "folder mapping" "folder mappings"\n'
+    out = subprocess.run(["bash", "-c", script], capture_output=True, text=True, check=True).stdout
+    assert out.strip() == said
+
+
+@pytest.mark.parametrize(("path", "used"), [("/mnt/a/", True), ("/mnt/c/", False)])
+def test_the_installer_knows_a_local_folder_already_used(path: str, used: bool) -> None:
+    script = f'{_bash_function("path_already_used")}\npath_already_used "{path}" /mnt/a/ /mnt/b/\n'
+    result = subprocess.run(["bash", "-c", script], check=False)
+    assert (result.returncode == 0) is used
