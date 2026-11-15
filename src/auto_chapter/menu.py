@@ -26,7 +26,7 @@ from auto_chapter.batch_control import (
     stop_requested,
 )
 from auto_chapter.config import Config, PathMapping
-from auto_chapter.console import console
+from auto_chapter.console import console, print_title
 from auto_chapter.detector.ffmpeg import get_duration
 from auto_chapter.display import (
     chapter_summary,
@@ -121,7 +121,7 @@ def _show_options(
     items, so each note reads as part of its own item (owner, 1.1.2: name and
     note ran together).
     """
-    console.print(f"\n[bold]{title}[/bold]")
+    print_title(title)
     if allow_cancel:
         console.print(f"  [cyan]0[/cyan]) {cancel_label}")
     for i, opt in enumerate(options, start=1):
@@ -628,7 +628,7 @@ def _ask_credits_filter(picked: list[Movie]) -> list[Movie] | None:
         f"  With Plex End Credits:                   {len(with_credits)}\n"
         f"  Without Plex End Credits:                {len(without_credits)}"
     )
-    console.print("\n[bold]How would you like to handle them?[/bold]")
+    print_title("How would you like to handle them?")
     console.print("  [cyan]0[/cyan]) Cancel")
     _print_option(
         1,
@@ -671,7 +671,7 @@ def _ask_process_without_credits(picked: list[Movie]) -> list[Movie] | None:
         lead = "None of the movies you selected has Plex End Credits yet."
 
     console.print(f"\n{lead}")
-    console.print(f"\n[bold]How would you like to handle {obj}?[/bold]")
+    print_title(f"How would you like to handle {obj}?")
     _print_option(
         0,
         "Cancel",
@@ -700,7 +700,7 @@ def _show_list_and_pick(candidates: list[Movie], orch: Orchestrator) -> None:
     Mutates `candidates`: removes successfully processed movies so the parent
     menu's panel/list reflects reality without a re-scan.
     """
-    console.print(f"\n[bold]Movies ({len(candidates)}):[/bold]")
+    print_title(f"Movies ({len(candidates)})")
     for i, mv in enumerate(candidates, start=1):
         marker = "" if mv.has_plex_credits else " [note](no Plex End Credits yet)[/note]"
         console.print(f"  [note]{i:>4})[/note] {mv.display}{marker}")
@@ -790,9 +790,9 @@ def _process_first_n(
             )
 
     default = len(pool)
+    console.print(f"\n{WRITE_NOTICE}")
+    print_title("How many movies should we process?")
     console.print(
-        f"\n{WRITE_NOTICE}\n"
-        f"\n[bold]How many movies should we process?[/bold]\n"
         f"[note]They are processed in alphabetical order "
         f"(max {len(pool)}, or 0 to cancel).[/note]"
     )
@@ -1394,7 +1394,7 @@ def _mapping_line(m: PathMapping) -> str:
 
 def _pick_mapping(config: Config, title: str) -> PathMapping | None:
     """Numbered list of the mappings. Returns the chosen one, None for Back / Ctrl+C."""
-    console.print(f"\n[bold]{title}[/bold]")
+    print_title(title)
     console.print("  [cyan]0[/cyan]) Back")
     for i, m in enumerate(config.paths, start=1):
         console.print(f"  [cyan]{i}[/cyan]) {_mapping_line(m)}")
@@ -1433,7 +1433,7 @@ def _folder_mappings(config: Config, orch: Orchestrator) -> None:
             _mappings_unknown_to_plex(config, plex_folders) if plex_folders is not None else set()
         )
 
-        console.print("\n[bold]Folder mappings[/bold]")
+        print_title("Folder mappings")
         if not config.paths:
             console.print("  [note](no folders mapped yet)[/note]")
         for m in config.paths:
@@ -1746,9 +1746,7 @@ def _add_folder_mapping(config: Config, orch: Orchestrator) -> list[str] | None:
         )
         return all_folders
 
-    console.print(
-        f"\n[bold]Found {_count(len(unmapped), 'unmapped folder', 'unmapped folders')} in Plex:[/bold]"
-    )
+    print_title(f"Found {_count(len(unmapped), 'unmapped folder', 'unmapped folders')} in Plex")
     console.print("  [cyan]0[/cyan]) Cancel")
     for i, f in enumerate(unmapped, start=1):
         console.print(f"  [cyan]{i}[/cyan]) {f}")
@@ -1784,7 +1782,7 @@ def _add_folder_mapping(config: Config, orch: Orchestrator) -> list[str] | None:
 def _min_movie_length(config: Config) -> None:
     """Change min_duration_seconds (stored in seconds, displayed in minutes)."""
     current_min = config.detection.min_duration_seconds // 60
-    console.print("\n[bold]Minimum movie length[/bold]")
+    print_title("Minimum movie length")
     console.print("Movies shorter than this are skipped during scanning.")
     console.print(f"Current: [cyan]{current_min}[/cyan] minutes")
 
@@ -1809,7 +1807,7 @@ def _min_movie_length(config: Config) -> None:
 def _chapter_threshold(config: Config) -> None:
     """Change detection.chapter_threshold — the cutoff for skipping already-chaptered movies."""
     current = config.detection.chapter_threshold
-    console.print("\n[bold]Chapter threshold[/bold]")
+    print_title("Chapter threshold")
     console.print("Movies with this many chapters or more are assumed to have a useful chapter")
     console.print("list of their own and are skipped. Movies with fewer get Auto Chapters,")
     console.print("which replace their own chapters.")
@@ -1837,7 +1835,7 @@ def _plex_connection(config: Config, orch: Orchestrator) -> None:
     """Show and edit Plex URL / token."""
     while True:
         masked = _mask_token(config.plex.token)
-        console.print("\n[bold]Plex connection[/bold]")
+        print_title("Plex connection")
         console.print("  [cyan]0[/cyan]) Back")
         console.print(f"  [cyan]1[/cyan]) Change Plex URL   [note]({config.plex.url})[/note]")
         console.print(f"  [cyan]2[/cyan]) Change Plex token [note]({masked})[/note]")

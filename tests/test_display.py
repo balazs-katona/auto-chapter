@@ -58,3 +58,24 @@ def test_summary_when_only_the_opening_and_credits_were_found() -> None:
     assert chapter_summary([START, CREDITS]) == (
         "2 chapters detected (opening and end credits only)"
     )
+
+
+def test_a_title_sits_in_a_grey_line(capsys) -> None:
+    """1.2.x (owner, design A): "── Main menu ─────", the full width."""
+    from auto_chapter.console import console, print_title
+
+    print_title("Main menu")
+
+    line = capsys.readouterr().out.splitlines()[-1]
+    assert line.startswith("── Main menu ─")
+    assert len(line) == console.width
+
+
+def test_a_title_too_long_for_the_line_is_not_cut(capsys) -> None:
+    from auto_chapter.console import console, print_title
+
+    title = "x" * (console.width + 5)
+    print_title(title)
+
+    out = "".join(capsys.readouterr().out.split())
+    assert title in out

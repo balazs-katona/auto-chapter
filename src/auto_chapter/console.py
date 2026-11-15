@@ -13,6 +13,7 @@ with an active Progress context, instead of the bar updating in place.
 """
 
 from rich.console import Console
+from rich.text import Text
 from rich.theme import Theme
 
 # "note": the quiet lines -- hints, help lines under menu items, details.
@@ -23,3 +24,21 @@ from rich.theme import Theme
 NOTE_STYLE = "grey62"
 
 console = Console(theme=Theme({"note": NOTE_STYLE}))
+
+
+def print_title(title: str) -> None:
+    """A menu or screen title in a grey line: "── Main menu ──────────".
+
+    Owner, 1.2.x: titles were bold like the item names under them and
+    blended in (the owner's terminal draws all bold text blue); a line marks
+    a new part in any terminal. `title` may hold markup. A title too long for
+    the line is printed without it, so it is never cut off.
+    """
+    label = Text.from_markup(title, style="bold")
+    width = console.width
+    console.print()
+    if label.cell_len + 7 > width:
+        console.print(Text("── ", style="note") + label)
+        return
+    rest = width - label.cell_len - 4
+    console.print(Text("── ", style="note") + label + Text(" " + "─" * rest, style="note"))

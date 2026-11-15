@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 from rich.prompt import IntPrompt
 from rich.table import Table
 
-from auto_chapter.console import console
+from auto_chapter.console import console, print_title
 
 if TYPE_CHECKING:
     from auto_chapter.config import Config
@@ -192,7 +192,8 @@ def help_flow(settings_dir: Path | None, config: "Config") -> None:
             _about_flow(config)
             continue
         title, text = pages[choice - 1]
-        console.print(f"\n[bold]{title}[/bold]\n")
+        print_title(title)
+        console.print()
         console.print(_words_table() if text is None else text)
         if not _back():
             return
