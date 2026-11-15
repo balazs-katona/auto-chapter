@@ -3,6 +3,12 @@
 The changes in each version of auto-chapter. Version numbers follow
 [Semantic Versioning](https://semver.org/).
 
+## 1.2.2 — 2026-11-15
+
+- Changed: easier to read in every terminal -- the help lines and hints are
+  a quiet grey (many terminals didn't show them dimmed at all), and every
+  menu and screen title sits in a line: "── Main menu ──────".
+
 ## 1.2.1 — 2026-11-15
 
 - Changed: About moved into the Help menu (Help → About), so the main menu
