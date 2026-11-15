@@ -1010,15 +1010,9 @@ def _update_end_credits_flow(orch: Orchestrator, config: Config) -> None:
         )
         console.print(panel)
 
-        if candidates:
-            # Only with movies to update (1.1.2 VM test: with none it still
-            # spoke of "these movies").
-            console.print(
-                "\n[dim]These movies got their Auto Chapters before Plex had detected their\n"
-                "End Credits. Updating redoes their Auto Chapters, now with the End Credits\n"
-                "chapter at the right spot.[/dim]"
-            )
-
+        # No explanation here: the main menu's note and the item's name say
+        # what Update does, and Generate has none either (1.1.2 VM test: with
+        # 0 movies it spoke of "these movies"; then removed for consistency).
         if not candidates:
             if stats.total_movies == 0:
                 console.print(

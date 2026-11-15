@@ -2415,7 +2415,7 @@ def test_update_with_nothing_to_update_does_not_speak_of_these_movies(
     assert "No movies need an End Credits update right now." in out
 
 
-def test_update_with_movies_to_update_says_what_updating_does(
+def test_update_with_movies_to_update_needs_no_extra_explanation(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], prompt: SimpleNamespace
 ) -> None:
     orch = _flow_with_stats(total_movies=1336)
@@ -2429,7 +2429,8 @@ def test_update_with_movies_to_update_says_what_updating_does(
     menu._update_end_credits_flow(orch, orch.config)
 
     out = " ".join(capsys.readouterr().out.split())
-    assert "These movies got their Auto Chapters before Plex had detected their End Credits." in out
+    assert "These movies got their Auto Chapters" not in out
+    assert "Plex has since detected" not in out
 
 
 def test_with_plex_down_a_scan_is_not_started(
