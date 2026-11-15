@@ -76,6 +76,16 @@ def _count(n: int, one: str, many: str) -> str:
     return f"{n} {one if n == 1 else many}"
 
 
+# Said before the user chooses how many / which movies to process: from that
+# choice on the work starts without another question (1.1.2 newcomer review:
+# nothing said that the movie files get written, how long it takes, or that
+# the folder needs room for a copy).
+WRITE_NOTICE = (
+    "[dim]Processing a movie: auto-chapter finds its chapters and writes them into the "
+    "movie file, a few minutes per movie. Meanwhile the movie's folder needs free space "
+    "for one more copy of it; the original is replaced only when the new file is complete.[/dim]"
+)
+
 # Standard cancel hint shown wherever the user can back out.
 CANCEL_HINT = "[dim](type 0 to cancel)[/dim]"
 
@@ -693,6 +703,7 @@ def _show_list_and_pick(candidates: list[Movie], orch: Orchestrator) -> None:
     for i, mv in enumerate(candidates, start=1):
         marker = "" if mv.has_plex_credits else " [dim](no Plex End Credits yet)[/dim]"
         console.print(f"  [dim]{i:>4})[/dim] {mv.display}{marker}")
+    console.print(f"\n{WRITE_NOTICE}")
 
     while True:
         spec = _ask_text(
@@ -779,8 +790,9 @@ def _process_first_n(
 
     default = len(pool)
     console.print(
-        f"\n[bold]How many movies should we process from the list?[/bold]\n"
-        f"[dim]Movies are processed in alphabetical order, starting from the top of the list "
+        f"\n{WRITE_NOTICE}\n"
+        f"\n[bold]How many movies should we process?[/bold]\n"
+        f"[dim]They are processed in alphabetical order "
         f"(max {len(pool)}, or 0 to cancel).[/dim]"
     )
     try:
@@ -907,18 +919,20 @@ def _generate_auto_chapters_flow(orch: Orchestrator, config: Config) -> None:
         with_credits = sum(1 for mv in candidates if mv.has_plex_credits)
         without_credits = len(candidates) - with_credits
 
+        min_minutes = config.detection.min_duration_seconds // 60
+        short_label = f"Shorter than {min_minutes} minutes (skipped):"
         panel = Panel(
-            f"  Total movies:                                     {stats.total_movies}\n"
-            f"  Movies with chapters from another source:         {stats.with_other_chapters}\n"
-            f"  Movies with Auto Chapters:                        {auto_done}\n"
+            f"  {'Total movies:':<50}{stats.total_movies}\n"
+            f"  {'Movies with chapters of their own:':<50}{stats.with_other_chapters}\n"
+            f"  {'Movies with Auto Chapters:':<50}{auto_done}\n"
             f"\n"
-            f"  [bold]Movies needing Auto Chapters:                     {len(candidates)}[/bold]\n"
-            f"    With Plex End Credits:                          {with_credits}\n"
-            f"    Without Plex End Credits:                       {without_credits}\n"
+            f"  [bold]{'Movies needing Auto Chapters:':<50}{len(candidates)}[/bold]\n"
+            f"    {'With Plex End Credits:':<48}{with_credits}\n"
+            f"    {'Without Plex End Credits:':<48}{without_credits}\n"
             f"\n"
-            f"  Too short (skipped):                              {stats.too_short}\n"
-            f"  Non-MKV files (skipped):                          {stats.non_mkv}\n"
-            f"  Missing files:                                    {stats.missing_files}",
+            f"  {short_label:<50}{stats.too_short}\n"
+            f"  {'Non-MKV files (skipped):':<50}{stats.non_mkv}\n"
+            f"  {'Missing files:':<50}{stats.missing_files}",
             title=f"Plex server: {orch.plex.server_name}",
             border_style="cyan",
         )
@@ -940,7 +954,7 @@ def _generate_auto_chapters_flow(orch: Orchestrator, config: Config) -> None:
         choice = _show_options(
             "What would you like to do?",
             [
-                "Generate Auto Chapters for movies with Plex End Credits",
+                "Generate Auto Chapters for movies with Plex End Credits (recommended)",
                 "Generate Auto Chapters for all movies",
                 "Show the list and pick movies manually",
             ],
@@ -1064,7 +1078,7 @@ def _print_ignored_mappings(ignored: list[str]) -> None:
     if ignored:
         console.print(
             "[dim]If the folder was renamed or moved in Plex, remove this mapping and add "
-            "the new folder\nin Settings > Folder mappings.[/dim]"
+            "the new folder\nin Settings → Folder mappings.[/dim]"
         )
 
 
@@ -1080,7 +1094,7 @@ _SKIP_REASON_TEXT = {
 
 def _skip_reason_text(skipped: SkippedMatch) -> str:
     if skipped.reason is SkipReason.OTHER_CHAPTERS:
-        return f"already has {skipped.chapter_count} chapters from another source"
+        return f"already has {skipped.chapter_count} chapters of its own"
     return _SKIP_REASON_TEXT[skipped.reason]
 
 
@@ -1099,7 +1113,7 @@ def _print_skipped_matches(skipped: list[SkippedMatch]) -> None:
             console.print(f"  - {escape(sm.display)} -- {_skip_reason_text(sm)}")
     else:
         by_reason = Counter(
-            "already have chapters from another source"
+            "already have chapters of their own"
             if sm.reason is SkipReason.OTHER_CHAPTERS
             else _SKIP_REASON_TEXT[sm.reason]
             for sm in skipped
@@ -1109,8 +1123,8 @@ def _print_skipped_matches(skipped: list[SkippedMatch]) -> None:
         console.print("[dim]Type more of the title to see them one by one.[/dim]")
     if any(sm.reason is SkipReason.OTHER_CHAPTERS for sm in skipped):
         console.print(
-            "[dim]A chapter list from another source that is probably useful is left alone.\n"
-            "Settings > Chapter threshold sets how many chapters it takes to assume that.[/dim]"
+            "[dim]A useful chapter list of a movie's own is left alone "
+            "(Settings → Chapter threshold).[/dim]"
         )
 
 def _plex_ready(orch: Orchestrator) -> bool:
@@ -1139,10 +1153,8 @@ def _find_by_title(orch: Orchestrator) -> None:
             else "Type a movie title to search for. The title shown in Plex or the original\n"
             "title works, accents are optional, and a part of the title is enough.\n"
             "\n"
-            "[dim]Unlike Generate/Update, this also finds movies that already have Auto\n"
-            "Chapters, so you can regenerate them on demand. A movie whose chapter list\n"
-            "from another source is probably useful is left alone. Settings > Chapter\n"
-            "threshold sets how many chapters it takes to assume that.[/dim]",
+            "[dim]This also finds movies that already have Auto Chapters, so you can make\n"
+            "them again.[/dim]",
             empty_hint="Please type a movie title to search for, or 0 to cancel.",
             retry_prompt="Type a movie title",
         )
@@ -1742,7 +1754,7 @@ def _add_folder_mapping(config: Config, orch: Orchestrator) -> list[str] | None:
 
     try:
         choice = IntPrompt.ask(
-            "Which to add?",
+            "Choose",
             choices=[str(i) for i in range(0, len(unmapped) + 1)],
             show_choices=True,
         )
@@ -1797,8 +1809,9 @@ def _chapter_threshold(config: Config) -> None:
     """Change detection.chapter_threshold — the cutoff for skipping already-chaptered movies."""
     current = config.detection.chapter_threshold
     console.print("\n[bold]Chapter threshold[/bold]")
-    console.print("Movies with this many chapters or more are assumed to already have a useful")
-    console.print("chapter list and are skipped. Fewer chapters are assumed not to be useful.")
+    console.print("Movies with this many chapters or more are assumed to have a useful chapter")
+    console.print("list of their own and are skipped. Movies with fewer get Auto Chapters,")
+    console.print("which replace their own chapters.")
     console.print(f"Current: [cyan]{current}[/cyan]")
 
     while True:

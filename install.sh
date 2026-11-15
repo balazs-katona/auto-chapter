@@ -504,7 +504,8 @@ PYEOF
             echo
             echo "Enter your Plex server address."
             echo -e "  ${DIM}Format: IP:PORT  -  Example: 192.168.1.100:32400${NC}"
-            echo -e "  ${DIM}(Plex uses port 32400 by default)${NC}"
+            echo -e "  ${DIM}(Plex uses port 32400 by default. Plex shows the address in its own${NC}"
+            echo -e "  ${DIM}Settings → Remote Access, as the private address.)${NC}"
             while true; do
                 ask "Plex server: " plex_addr
                 plex_addr=$(trim "$plex_addr")

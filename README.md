@@ -134,8 +134,8 @@ Once running, `auto-chapter` gives you a numbered menu:
 - **Find a movie by title** lets you (re)process one specific movie by name,
   including one that already has Auto Chapters. You see the chapters first
   and decide whether to write them. If a movie matches but can't be
-  processed (for example it probably already has a useful chapter list from
-  another source), you are told why.
+  processed (for example it probably already has a useful chapter list of
+  its own), you are told why.
 - **Settings** covers folder mappings (add/change/remove/enable/disable),
   minimum movie length, the chapter threshold (from how many chapters on a
   movie is assumed to have a useful chapter list already), and your Plex

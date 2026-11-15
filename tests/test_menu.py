@@ -749,7 +749,9 @@ def test_find_by_title_intro_does_not_name_a_chapter_number(find_flow: SimpleNam
     menu._find_by_title(find_flow.orch)
 
     intro = " ".join(find_flow.asked[0].split())
-    assert "Settings > Chapter threshold" in intro
+    # 1.1.2 newcomer review: the threshold is explained where a movie is left
+    # out for it, not in the intro too.
+    assert "This also finds movies that already have Auto Chapters" in intro
     assert not any(ch.isdigit() for ch in intro)
 
 
@@ -775,7 +777,7 @@ def test_find_by_title_only_skipped_matches_are_listed_with_their_reason(
 
     out = capsys.readouterr().out
     assert "Found 2 movies matching 'Heat', but none can be processed" in out
-    assert "Heat (1995) -- already has 12 chapters from another source" in out
+    assert "Heat (1995) -- already has 12 chapters of its own" in out
     assert "Heat 2 -- not an MKV file" in out
     assert "No movie found" not in out
     assert find_flow.processed == []
@@ -788,8 +790,8 @@ def test_find_by_title_chapter_note_points_to_the_setting_not_a_number(
 
     menu._find_by_title(find_flow.orch)
 
-    out = capsys.readouterr().out
-    assert "Settings > Chapter threshold" in out
+    out = " ".join(capsys.readouterr().out.split())
+    assert "(Settings → Chapter threshold)" in out
     assert "threshold is 4" not in out
 
 
@@ -830,7 +832,7 @@ def test_find_by_title_skipped_matches_are_shown_next_to_a_processable_one(
 
     out = capsys.readouterr().out
     assert "Also found, but cannot be processed" in out
-    assert "Heat (1995) -- already has 12 chapters from another source" in out
+    assert "Heat (1995) -- already has 12 chapters of its own" in out
     assert [mv.title for mv in find_flow.processed] == ["Heat Wave"]
 
 
@@ -1749,7 +1751,7 @@ def test_find_by_title_shows_the_long_intro_only_the_first_time(
 
     menu._find_by_title(find_flow.orch)
 
-    assert "Unlike Generate/Update" in find_flow.asked[0]
+    assert "This also finds movies that already have Auto Chapters" in find_flow.asked[0]
     assert find_flow.asked[1] == "Type a movie title"
 
 
@@ -2470,7 +2472,7 @@ def test_a_long_list_of_left_out_matches_is_summed_up(
     menu._print_skipped_matches(skipped)
 
     out = " ".join(capsys.readouterr().out.split())
-    assert "12 movies -- already have chapters from another source" in out
+    assert "12 movies -- already have chapters of their own" in out
     assert "1 movie -- shorter than the Minimum movie length in Settings" in out
     assert "T3" not in out
 
@@ -2537,3 +2539,30 @@ def test_the_remove_question_shows_y_n_once(
     menu._remove_folder_mapping(mapping_flow.config)
 
     assert asked and "(y/n)" not in asked[0]
+
+
+def test_before_choosing_how_many_it_says_what_processing_does(
+    prompt: SimpleNamespace, batch: SimpleNamespace, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """1.1.2 newcomer review: nothing said that the files get written."""
+    prompt.answers = [0]
+
+    menu._process_first_n(_ten_movies(), None)
+
+    out = " ".join(capsys.readouterr().out.split())
+    assert "writes them into the movie file, a few minutes per movie" in out
+    assert "free space for one more copy of it" in out
+    assert out.index("writes them into") < out.index("How many movies should we process?")
+    assert batch.calls == []
+
+
+def test_the_threshold_says_fewer_chapters_get_replaced(
+    prompt: SimpleNamespace, capsys: pytest.CaptureFixture[str]
+) -> None:
+    prompt.answers = [0]
+    config = SimpleNamespace(detection=SimpleNamespace(chapter_threshold=4))
+
+    menu._chapter_threshold(config)
+
+    out = " ".join(capsys.readouterr().out.split())
+    assert "Movies with fewer get Auto Chapters, which replace their own chapters." in out
