@@ -1,6 +1,6 @@
 [project]
 name = "auto-chapter"
-version = "1.2.2"
+version = "1.2.3"
 description = "Chapters for the movies on your Plex server, made automatically"
 readme = "README.md"
 requires-python = ">=3.13"

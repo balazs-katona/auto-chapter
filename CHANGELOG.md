@@ -3,6 +3,11 @@
 The changes in each version of auto-chapter. Version numbers follow
 [Semantic Versioning](https://semver.org/).
 
+## 1.2.3 — 2026-11-16
+
+- Fixed: in a narrow terminal window, long menu lines and folder paths
+  continued at the left edge; now they go on under their own text.
+
 ## 1.2.2 — 2026-11-15
 
 - Changed: easier to read in every terminal -- the help lines and hints are
