@@ -4,7 +4,6 @@
 
 import contextlib
 import re
-import textwrap
 from collections import Counter
 from collections.abc import Iterator
 from functools import partial
@@ -13,9 +12,11 @@ from typing import Any
 from urllib.parse import unquote, urlsplit
 
 from rich.markup import escape
+from rich.padding import Padding
 from rich.panel import Panel
 from rich.progress import Progress, TextColumn
 from rich.prompt import IntPrompt, Prompt
+from rich.table import Table
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 
@@ -122,17 +123,18 @@ def _show_options(
     note ran together).
     """
     print_title(title)
+    grid = _options_grid()
     if allow_cancel:
-        console.print(f"  [cyan]0[/cyan]) {cancel_label}")
+        grid.add_row("[cyan]0[/cyan])", cancel_label)
     for i, opt in enumerate(options, start=1):
         if notes:
             if allow_cancel or i > 1:
-                console.print()
-            console.print(f"  [cyan]{i}[/cyan]) [bold]{opt}[/bold]")
-            if notes[i - 1]:
-                console.print(f"     [note]{notes[i - 1]}[/note]")
+                grid.add_row("", "")
+            note = f"\n[note]{notes[i - 1]}[/note]" if notes[i - 1] else ""
+            grid.add_row(f"[cyan]{i}[/cyan])", f"[bold]{opt}[/bold]{note}")
         else:
-            console.print(f"  [cyan]{i}[/cyan]) {opt}")
+            grid.add_row(f"[cyan]{i}[/cyan])", opt)
+    console.print(Padding(grid, (0, 0, 0, 2)))
 
     start = 0 if allow_cancel else 1
     try:
@@ -180,27 +182,23 @@ def _ask_text(
 
 
 # Indent and width for the explanation printed under a numbered option.
-_NOTE_INDENT = " " * 5
-_NOTE_WIDTH = 76
-
-
-def _print_option_note(text: str) -> None:
-    """Print an option's explanation, wrapped, dim and indented under its number
-    (the look of _show_options' notes, 1.1.2)."""
-    filled = textwrap.fill(
-        text,
-        width=_NOTE_WIDTH,
-        initial_indent=_NOTE_INDENT,
-        subsequent_indent=_NOTE_INDENT,
-    )
-    console.print(f"[note]{escape(filled)}[/note]")
+def _options_grid() -> Table:
+    """Two columns, "N)" and the text, so a line too long for the terminal
+    goes on under its own text, not at the left edge (1.2.x: in a narrow
+    window the help lines continued at column 0)."""
+    grid = Table.grid(padding=(0, 1))
+    grid.add_column(justify="right", no_wrap=True)
+    grid.add_column()
+    return grid
 
 
 def _print_option(number: int, name: str, note: str) -> None:
     """One choice of a hand-built menu, in _show_options' look: the number,
-    the name in bold, the note dim under it, an empty line before it."""
-    console.print(f"\n  [cyan]{number}[/cyan]) [bold]{name}[/bold]")
-    _print_option_note(note)
+    the name in bold, the note in grey under it, an empty line before it."""
+    grid = _options_grid()
+    grid.add_row(f"[cyan]{number}[/cyan])", f"[bold]{name}[/bold]\n[note]{escape(note)}[/note]")
+    console.print()
+    console.print(Padding(grid, (0, 0, 0, 2)))
 
 
 def parse_selection(spec: str, max_n: int) -> list[int]:

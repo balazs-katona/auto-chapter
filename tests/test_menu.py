@@ -1972,7 +1972,8 @@ def test_find_by_title_list_says_what_each_match_needs(
 
     menu._find_by_title(find_flow.orch)
 
-    out = capsys.readouterr().out
+    # The options grid pads lines to its width; compare without that.
+    out = "\n".join(line.rstrip() for line in capsys.readouterr().out.splitlines()) + "\n"
     assert "1) Heat A (2000)  (already has Auto Chapters)\n" in out
     assert (
         "2) Heat B (2000) (already has Auto Chapters, End Credits chapter missing -- "
@@ -2587,3 +2588,23 @@ def test_quiet_lines_use_the_fixed_grey_not_dim() -> None:
     assert color is not None and color.name == NOTE_STYLE and color.number == 247
     install_sh = (src.parent.parent / "install.sh").read_text(encoding="utf-8")
     assert "DIM='\\033[38;5;247m'" in install_sh
+
+
+def test_a_long_help_line_goes_on_under_its_own_text(
+    prompt: SimpleNamespace, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """1.2.x: in a narrow window a wrapped help line continued at column 0."""
+    monkeypatch.setattr(menu.console, "width", 40)
+    prompt.answers = [0]
+
+    menu._show_options(
+        "Main menu",
+        ["Generate Auto Chapters"],
+        allow_cancel=True,
+        notes=["Adds Auto Chapters to the movies that need them, a long line"],
+    )
+
+    lines = [line.rstrip() for line in capsys.readouterr().out.splitlines()]
+    start = next(i for i, line in enumerate(lines) if "Adds Auto Chapters" in line)
+    assert lines[start].startswith("     Adds")
+    assert lines[start + 1].startswith("     ") and lines[start + 1].strip()
