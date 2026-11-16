@@ -2608,3 +2608,26 @@ def test_a_long_help_line_goes_on_under_its_own_text(
     start = next(i for i, line in enumerate(lines) if "Adds Auto Chapters" in line)
     assert lines[start].startswith("     Adds")
     assert lines[start + 1].startswith("     ") and lines[start + 1].strip()
+
+
+def test_a_long_mapping_line_wraps_under_itself(
+    prompt: SimpleNamespace, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """1.2.x VM test: "/share/... [active]" continued at the left edge."""
+    monkeypatch.setattr(menu.console, "width", 50)
+    config = SimpleNamespace(
+        paths=[
+            PathMapping(
+                plex="/share/CACHEDEV1_DATA/Multimedia/Filmek/",
+                local="/mnt/nas-share/media/Filmek/",
+                enabled=True,
+            )
+        ]
+    )
+    prompt.answers = [0]
+
+    menu._pick_mapping(config, "Remove folder mapping")
+
+    lines = [line.rstrip() for line in capsys.readouterr().out.splitlines() if line.strip()]
+    first = next(i for i, line in enumerate(lines) if "/mnt/nas-share" in line)
+    assert lines[first + 1].startswith("     ")

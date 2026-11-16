@@ -1393,9 +1393,11 @@ def _mapping_line(m: PathMapping) -> str:
 def _pick_mapping(config: Config, title: str) -> PathMapping | None:
     """Numbered list of the mappings. Returns the chosen one, None for Back / Ctrl+C."""
     print_title(title)
-    console.print("  [cyan]0[/cyan]) Back")
+    grid = _options_grid()
+    grid.add_row("[cyan]0[/cyan])", "Back")
     for i, m in enumerate(config.paths, start=1):
-        console.print(f"  [cyan]{i}[/cyan]) {_mapping_line(m)}")
+        grid.add_row(f"[cyan]{i}[/cyan])", _mapping_line(m))
+    console.print(Padding(grid, (0, 0, 0, 2)))
     try:
         choice = IntPrompt.ask(
             "Choose",
@@ -1445,7 +1447,9 @@ def _folder_mappings(config: Config, orch: Orchestrator) -> None:
             plex_tag = (
                 "  [red]\\[not found in Plex][/red]" if m.plex in unknown_to_plex else ""
             )
-            console.print(f"  {_mapping_line(m)}{status_tag}{plex_tag}")
+            # Indented as a block: a long path wraps under the line, not at
+            # the left edge (1.2.x VM test).
+            console.print(Padding(f"{_mapping_line(m)}{status_tag}{plex_tag}", (0, 0, 0, 2)))
 
         console.print()
         console.print("  [cyan]0[/cyan]) Back")
